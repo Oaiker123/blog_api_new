@@ -34,7 +34,7 @@ class SocialAuthController extends Controller
         $token = $user->createToken('api-token')->plainTextToken;
 
         return response()->json([
-            'message' => 'Đăng nhập bằng ' . ucfirst($provider) . ' thành công!',
+            'message' => 'dang nhap bang ' . ucfirst($provider) . ' thanh cong!',
             'user' => $user,
             'provider' => $provider,
             'token' => $token,
