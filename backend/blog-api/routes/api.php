@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\SocialAuthController;
 use Illuminate\Http\Request;
@@ -32,4 +33,12 @@ Route::prefix('auth')->group(function () {
 
     Route::get('/{provider}/redirect', [SocialAuthController::class, 'redirect']);
     Route::get('/{provider}/callback', [SocialAuthController::class, 'callback']);
+});
+
+// 🧑‍💼 ADMIN ROUTES (chỉ Super Admin được quyền)
+Route::middleware(['auth:sanctum', 'role:Super Admin'])->prefix('admin')->group(function () {
+    Route::get('/users', [UserController::class, 'index']);           // Xem danh sách user
+    Route::get('/users/{id}', [UserController::class, 'show']);       // Xem chi tiết 1 user
+    Route::put('/users/{id}/role', [UserController::class, 'updateRole']); // Đổi role user
+    Route::delete('/users/{id}', [UserController::class, 'destroy']); // Xóa user
 });
