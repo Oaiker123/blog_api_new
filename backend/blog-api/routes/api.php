@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\PostController;
 use App\Http\Controllers\SocialAuthController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -21,7 +22,9 @@ use Illuminate\Support\Facades\Route;
 //     return $request->user();
 // });
 
-// Auth routes
+// -----------------------------------
+// 🔐 AUTH ROUTES
+// -----------------------------------
 Route::prefix('auth')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/verify-otp', [AuthController::class, 'verifyOtp']);
@@ -35,10 +38,35 @@ Route::prefix('auth')->group(function () {
     Route::get('/{provider}/callback', [SocialAuthController::class, 'callback']);
 });
 
+// -----------------------------------
 // 🧑‍💼 ADMIN ROUTES (chỉ Super Admin được quyền)
+// -----------------------------------
 Route::middleware(['auth:sanctum', 'role:Super Admin'])->prefix('admin')->group(function () {
-    Route::get('/users', [UserController::class, 'index']);           // Xem danh sách user
-    Route::get('/users/{id}', [UserController::class, 'show']);       // Xem chi tiết 1 user
+    Route::get('/users', [UserController::class, 'index']);             // Xem danh sách user
+    Route::get('/users/{id}', [UserController::class, 'show']);         // Xem chi tiết user
     Route::put('/users/{id}/role', [UserController::class, 'updateRole']); // Đổi role user
-    Route::delete('/users/{id}', [UserController::class, 'destroy']); // Xóa user
+    Route::delete('/users/{id}', [UserController::class, 'destroy']);   // Xóa user
+});
+
+// Route::middleware(['auth:sanctum'])->prefix('admin')->group(function () {
+//     Route::get('/users', [UserController::class, 'index']);
+//     Route::get('/users/{id}', [UserController::class, 'show']);
+//     Route::put('/users/{id}/role', [UserController::class, 'updateRole']); // bỏ middleware Super Admin để test các lỗi
+//     Route::delete('/users/{id}', [UserController::class, 'destroy']);
+// });
+
+// -----------------------------------
+// 📝 POSTS ROUTES (phân quyền theo role / permission)
+// -----------------------------------
+Route::prefix('posts')->middleware('auth:sanctum')->group(function () {
+    Route::get('/', [PostController::class, 'index']); // ai cũng xem được
+    Route::get('/{id}', [PostController::class, 'show']);
+
+    // Author: tạo / sửa / xóa bài
+    Route::post('/', [PostController::class, 'store'])->middleware('permission:create posts');
+    Route::put('/{id}', [PostController::class, 'update'])->middleware('permission:edit posts');
+    Route::delete('/{id}', [PostController::class, 'destroy'])->middleware('permission:delete posts');
+
+    // Moderator: duyệt bài
+    Route::put('/{id}/approve', [PostController::class, 'approve'])->middleware('permission:approve posts');
 });

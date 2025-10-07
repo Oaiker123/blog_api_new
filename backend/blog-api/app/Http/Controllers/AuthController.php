@@ -213,11 +213,20 @@ class AuthController extends Controller
     // Thông tin user hiện tại
     public function me(Request $request)
     {
+        $user = $request->user()->load('roles', 'permissions');
+
         return response()->json([
             'message' => 'Lay thong tin nguoi dung thanh cong',
-            'user' => $request->user()
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->getRoleNames(), // Lấy danh sách role
+                'permissions' => $user->getAllPermissions()->pluck('name'), // Lấy danh sách quyền
+            ]
         ]);
     }
+
 
     //logout
     public function logout(Request $request)

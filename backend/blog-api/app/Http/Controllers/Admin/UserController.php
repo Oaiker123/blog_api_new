@@ -33,20 +33,52 @@ class UserController extends Controller
     // 🔁 Cập nhật role người dùng
     public function updateRole(Request $request, $id)
     {
-        $request->validate([
-            'role' => 'required|string|exists:roles,name'
-        ]);
+        try {
+            // 1️⃣ Chỉ Super Admin được phép đổi role
+            $currentUser = auth()->user();
+            if (!$currentUser->hasRole('Super Admin')) {
+                return response()->json([
+                    'message' => 'Ban khong co quyen thuc hien hanh dong nay'
+                ], 403);
+            }
 
-        $user = User::findOrFail($id);
+            // 2️⃣ Validate role hợp lệ
+            $validated = $request->validate([
+                'role' => 'required|string|exists:roles,name'
+            ]);
 
-        // Gán role mới
-        $user->syncRoles([$request->role]);
+            // 3️⃣ Tìm user cần cập nhật
+            $user = User::find($id);
+            if (!$user) {
+                return response()->json([
+                    'message' => 'Nguoi dung khong ton tai'
+                ], 404);
+            }
 
-        return response()->json([
-            'message' => 'Cap nhat role thanh cong',
-            'user' => $user->load('roles')
-        ]);
+            // 4️⃣ Cập nhật role
+            $user->syncRoles([$validated['role']]);
+
+            return response()->json([
+                'message' => 'Cap nhat role thanh cong',
+                'user' => $user->load('roles')
+            ], 200);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // 5️⃣ Role không hợp lệ
+            return response()->json([
+                'message' => 'Du lieu khong hop le',
+                'errors' => $e->errors()
+            ], 422);
+
+        } catch (\Exception $e) {
+            // 6️⃣ Lỗi không mong đợi khác
+            return response()->json([
+                'message' => 'Co loi xay ra khi cap nhat role',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
+
 
     // ❌ Xóa user
     public function destroy($id)
