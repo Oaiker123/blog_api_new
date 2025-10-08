@@ -10,30 +10,42 @@ class RolePermissionSeeder extends Seeder
 {
     public function run()
     {
-        // Tạo permission
+        // ✅ Danh sách permission
         $permissions = [
-            'manage_users',
-            'approve_posts',
-            'create_posts',
-            'edit_own_posts',
-            'delete_own_posts',
-            'view_posts'
+            // Quyền bài viết
+            'create posts',
+            'edit posts',
+            'delete posts',
+            'approve posts',
+
+            // Quyền người dùng
+            'view users',
+            'create users',
+            'edit users',
+            'delete users',
+            'update roles',
+
+            // Quyền profile
+            'edit own profile',
+            'edit any profile',
+
         ];
 
-        foreach ($permissions as $permission) {
-            Permission::firstOrCreate(['name' => $permission]);
+        foreach ($permissions as $perm) {
+            Permission::firstOrCreate(['name' => $perm]);
         }
 
-        // Tạo role và gán quyền
+        // ✅ Tạo các role
         $superAdmin = Role::firstOrCreate(['name' => 'Super Admin']);
         $moderator = Role::firstOrCreate(['name' => 'Moderator']);
         $author = Role::firstOrCreate(['name' => 'Author']);
         $member = Role::firstOrCreate(['name' => 'Member']);
 
+        // ✅ Gán quyền
         $superAdmin->givePermissionTo(Permission::all());
-        $moderator->givePermissionTo(['approve_posts', 'view_posts']);
-        $author->givePermissionTo(['create_posts', 'edit_own_posts', 'delete_own_posts', 'view_posts']);
-        $member->givePermissionTo(['view_posts']);
+        $moderator->syncPermissions(['approve posts', 'edit posts']);
+        $author->syncPermissions(['create posts', 'edit posts', 'delete posts', 'edit own profile']);
+        $member->syncPermissions(['edit own profile']); // Member không có quyền
     }
 }
 

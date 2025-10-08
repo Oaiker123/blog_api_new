@@ -18,7 +18,7 @@ class Authenticate extends Middleware
     protected function unauthenticated($request, array $guards)
     {
         abort(response()->json([
-            'message' => 'Bạn chưa đăng nhập hoặc đã đăng xuất rồi!'
+            'message' => 'Ban chua dang nhap hoac da dang xuat roi!'
         ], 200));
     }
 }

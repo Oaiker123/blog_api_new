@@ -88,4 +88,87 @@ class UserController extends Controller
 
         return response()->json(['message' => 'da xoa nguoi dung thanh cong']);
     }
+
+    // 📌 Gán quyền cho user (chỉ Super Admin được phép)
+    public function givePermission(Request $request, $id)
+    {
+        try {
+            // 1️⃣ Kiểm tra người đang đăng nhập có phải Super Admin không
+            $currentUser = auth()->user();
+            if (!$currentUser->hasRole('Super Admin')) {
+                return response()->json([
+                    'message' => 'Ban khong co quyen gan permission cho nguoi dung khac'
+                ], 403);
+            }
+
+            // 2️⃣ Validate input
+            $request->validate([
+                'permissions' => 'required|array',
+                'permissions.*' => 'string|exists:permissions,name',
+            ]);
+
+            // 3️⃣ Tìm user cần cấp quyền
+            $user = User::findOrFail($id);
+
+            // 4️⃣ Gán quyền
+            $user->givePermissionTo($request->permissions);
+
+            return response()->json([
+                'message' => 'Phan quyen thanh cong',
+                'user' => $user->load('roles', 'permissions')
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'message' => 'Du lieu khong hop le',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Co loi xay ra khi phan quyen',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // 📌 Gỡ quyền của user (chỉ Super Admin được phép)
+    public function revokePermission(Request $request, $id)
+    {
+        try {
+            // 1️⃣ Kiểm tra quyền Super Admin
+            $currentUser = auth()->user();
+            if (!$currentUser->hasRole('Super Admin')) {
+                return response()->json([
+                    'message' => 'Ban khong co quyen thu hoi permission'
+                ], 403);
+            }
+
+            // 2️⃣ Validate input
+            $request->validate([
+                'permissions' => 'required|array',
+                'permissions.*' => 'string|exists:permissions,name',
+            ]);
+
+            // 3️⃣ Tìm user
+            $user = User::findOrFail($id);
+
+            // 4️⃣ Gỡ quyền
+            $user->revokePermissionTo($request->permissions);
+
+            return response()->json([
+                'message' => 'Thu hoi quyen thanh cong',
+                'user' => $user->load('roles', 'permissions')
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'message' => 'Du lieu khong hop le',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Co loi xay ra khi thu hoi quyen',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
 }

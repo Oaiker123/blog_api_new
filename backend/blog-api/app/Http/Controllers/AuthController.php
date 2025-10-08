@@ -32,25 +32,25 @@ class AuthController extends Controller
             if ($errors->has('email')) {
                 if (!Str::contains($email, '@')) {
                     return response()->json([
-                        'message' => 'Email phải có @'
+                        'message' => 'Email phai co @'
                     ], 422);
                 }
 
                 // 1. Kiểm tra đuôi .com
                 if (!preg_match('/\.com$/i', $email)) {
-                    return response()->json(['message' => 'Email phải có đuôi .com'], 422);
+                    return response()->json(['message' => 'Email phai co duoi .com'], 422);
                 }
 
                 // 2. Kiểm tra domain hợp lệ
                 $domain = substr(strrchr($email, "@"), 1);
                 $allowedDomains = ['gmail.com', 'yahoo.com', 'outlook.com'];
                 if (!in_array($domain, $allowedDomains)) {
-                    return response()->json(['message' => 'Email phải thuộc Gmail, Yahoo hoặc Outlook'], 422);
+                    return response()->json(['message' => 'Email phai thuoc Gmail, Yahoo hoac Outlook'], 422);
                 }
 
                 if (in_array('The email has already been taken.', $errors->get('email'))) {
                     return response()->json([
-                        'message' => 'Email đã tồn tại'
+                        'message' => 'Email da ton tai'
                     ], 422);
                 }
             }
@@ -60,12 +60,12 @@ class AuthController extends Controller
                 foreach ($errors->get('password') as $err) {
                     if (Str::contains($err, 'at least 8 characters')) {
                         return response()->json([
-                            'message' => 'Mật khẩu phải có ít nhất 8 ký tự'
+                            'message' => 'Mat khau phai co it nhat 8 ky tu'
                         ], 422);
                     }
                     if (Str::contains($err, 'confirmation')) {
                         return response()->json([
-                            'message' => 'Mật khẩu và xác nhận mật khẩu không khớp'
+                            'message' => 'Mat khau va xac nhan mat khau khong khop'
                         ], 422);
                     }
                 }
@@ -74,7 +74,7 @@ class AuthController extends Controller
             // Kiểm tra name hoặc các field rỗng khác
             if ($errors->has('name')) {
                 return response()->json([
-                    'message' => 'Phải nhập đủ thông tin (name, email, password)'
+                    'message' => 'Phai nhap du thong tin (name, email, password)'
                 ], 422);
             }
         }
@@ -98,7 +98,7 @@ class AuthController extends Controller
             ]);
         } catch (\Exception $e) {
             return response()->json([
-                'message' => 'Không thể tạo user',
+                'message' => 'Khong the tao user',
                 'error' => $e->getMessage()
             ], 500);
         }
@@ -239,5 +239,6 @@ class AuthController extends Controller
             'message' => 'Ban đa đang xuat thanh cong!'
         ], 200);
     }
+
 
 }

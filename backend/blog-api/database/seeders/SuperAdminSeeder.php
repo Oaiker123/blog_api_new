@@ -14,6 +14,7 @@ class SuperAdminSeeder extends Seeder
      */
     public function run(): void
     {
+        // Super Admin
         $admin = User::firstOrCreate(
             ['email' => 'admin@gmail.com'],
             [
@@ -23,7 +24,42 @@ class SuperAdminSeeder extends Seeder
                 'email_verified_at' => now(),
             ]
         );
-
         $admin->assignRole('Super Admin');
+
+        // Author
+        $author = User::firstOrCreate(
+            ['email' => 'author@example.com'],
+            [
+                'name' => 'Author User',
+                'password' => Hash::make('Password@123'),
+                'is_verified' => true,
+                'email_verified_at' => now(),
+            ]
+        );
+        $author->assignRole('Author');
+
+        // Moderator
+        $moderator = User::firstOrCreate(
+            ['email' => 'moderator@example.com'],
+            [
+                'name' => 'Moderator User',
+                'password' => Hash::make('Password@123'),
+                'is_verified' => true,
+                'email_verified_at' => now(),
+            ]
+        );
+        $moderator->assignRole('Moderator');
+
+        // Member
+        $member = User::firstOrCreate(
+            ['email' => 'member@example.com'],
+            [
+                'name' => 'Member User',
+                'password' => Hash::make('Password@123'),
+                'is_verified' => true,
+                'email_verified_at' => now(),
+            ]
+        );
+        $member->assignRole('Member');
     }
 }

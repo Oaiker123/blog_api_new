@@ -13,7 +13,7 @@ class PostController extends Controller
     {
         $posts = Post::with('user:id,name')->latest()->get();
         return response()->json([
-            'message' => 'Danh sách bài viết',
+            'message' => 'Danh sach bai viet',
             'posts' => $posts
         ]);
     }
@@ -41,7 +41,7 @@ class PostController extends Controller
         ]);
 
         return response()->json([
-            'message' => 'Tạo bài viết thành công, đang chờ duyệt',
+            'message' => 'Tao bai viet thanh cong, dang cho duyet',
             'post' => $post
         ]);
     }
@@ -53,11 +53,11 @@ class PostController extends Controller
 
         // chỉ cho phép sửa bài của mình hoặc Super Admin
         if ($post->user_id !== Auth::id() && !Auth::user()->hasRole('Super Admin')) {
-            return response()->json(['message' => 'Bạn không có quyền sửa bài này'], 403);
+            return response()->json(['message' => 'Ban khong co quyen sua bai nay'], 403);
         }
 
         $post->update($request->only('title', 'content'));
-        return response()->json(['message' => 'Cập nhật bài viết thành công', 'post' => $post]);
+        return response()->json(['message' => 'Cap nhat bai viet thanh cong', 'post' => $post]);
     }
 
     // 🔴 Xóa bài viết
@@ -66,11 +66,11 @@ class PostController extends Controller
         $post = Post::findOrFail($id);
 
         if ($post->user_id !== Auth::id() && !Auth::user()->hasRole('Super Admin')) {
-            return response()->json(['message' => 'Bạn không có quyền xóa bài này'], 403);
+            return response()->json(['message' => 'Ban khong co quyen xoa bai nay'], 403);
         }
 
         $post->delete();
-        return response()->json(['message' => 'Đã xóa bài viết']);
+        return response()->json(['message' => 'da xoa bai viet']);
     }
 
     // 🟣 Moderator duyệt bài
@@ -80,7 +80,7 @@ class PostController extends Controller
         $post->update(['status' => 'approved']);
 
         return response()->json([
-            'message' => 'Bài viết đã được duyệt thành công',
+            'message' => 'Bai viet da duoc duyet thanh cong',
             'post' => $post
         ]);
     }

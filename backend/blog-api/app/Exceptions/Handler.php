@@ -36,6 +36,12 @@ class Handler extends ExceptionHandler
             ], 403);
         }
 
+        if ($exception instanceof \Illuminate\Auth\AuthenticationException) {
+        return response()->json([
+            'message' => 'Vui long dang nhap de tiep tuc.'
+        ], 401);
+    }
+
         return parent::render($request, $exception);
     }
 

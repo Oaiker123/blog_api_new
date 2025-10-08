@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\API\ProfileController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\SocialAuthController;
@@ -46,6 +47,13 @@ Route::middleware(['auth:sanctum', 'role:Super Admin'])->prefix('admin')->group(
     Route::get('/users/{id}', [UserController::class, 'show']);         // Xem chi tiết user
     Route::put('/users/{id}/role', [UserController::class, 'updateRole']); // Đổi role user
     Route::delete('/users/{id}', [UserController::class, 'destroy']);   // Xóa user
+
+    // 👇 Thêm 2 route phân quyền
+    Route::post('/users/{id}/permissions', [UserController::class, 'givePermission']);
+    Route::delete('/users/{id}/permissions', [UserController::class, 'revokePermission']);
+
+    // 👤 Super Admin chỉnh sửa profile của người khác
+    Route::put('/profiles/{id}', [ProfileController::class, 'update']);
 });
 
 // Route::middleware(['auth:sanctum'])->prefix('admin')->group(function () {
@@ -54,6 +62,21 @@ Route::middleware(['auth:sanctum', 'role:Super Admin'])->prefix('admin')->group(
 //     Route::put('/users/{id}/role', [UserController::class, 'updateRole']); // bỏ middleware Super Admin để test các lỗi
 //     Route::delete('/users/{id}', [UserController::class, 'destroy']);
 // });
+
+// -----------------------------------
+// 👤 PROFILE ROUTES (cho người dùng thường)
+// -----------------------------------
+Route::middleware(['auth:sanctum'])->group(function () {
+    // Xem profile cá nhân
+    Route::get('/user/profile', [ProfileController::class, 'showSelf']);
+
+    // Cập nhật profile cá nhân
+    Route::put('/user/profile', [ProfileController::class, 'update']);
+});
+
+// 🟢 Public route: ai cũng xem được profile công khai
+Route::get('/profiles/{username}', [ProfileController::class, 'showByUsername']);
+
 
 // -----------------------------------
 // 📝 POSTS ROUTES (phân quyền theo role / permission)
