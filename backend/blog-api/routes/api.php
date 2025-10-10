@@ -72,6 +72,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // Cập nhật profile cá nhân
     Route::put('/user/profile', [ProfileController::class, 'update']);
+
+    Route::delete('/avatar', [ProfileController::class, 'deleteAvatar']); // Xóa avatar
+    Route::delete('/cover', [ProfileController::class, 'deleteCover']);   // Xóa cover
 });
 
 // 🟢 Public route: ai cũng xem được profile công khai
