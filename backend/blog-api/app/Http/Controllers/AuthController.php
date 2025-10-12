@@ -196,9 +196,12 @@ class AuthController extends Controller
         }
 
         if (!$user->email_verified_at) {
-            return response()->json(['message' => 'Tai khoan chua xac minh email!'], 403);
+            return response()->json([
+                'message' => 'Tai khoan chua xac minh email!',
+                'user_id' => $user->id,
+                'email'   => $user->email,
+            ], 403);
         }
-
         // Nếu đăng nhập đúng
         $token = $user->createToken('api-token')->plainTextToken;
 

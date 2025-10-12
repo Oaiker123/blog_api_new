@@ -96,3 +96,8 @@ Route::prefix('posts')->middleware('auth:sanctum')->group(function () {
     // Moderator: duyệt bài
     Route::put('/{id}/approve', [PostController::class, 'approve'])->middleware('permission:approve posts');
 });
+
+
+Route::get('/test', function () {
+    return response()->json(['message' => 'Hello from Laravel!']);
+});
