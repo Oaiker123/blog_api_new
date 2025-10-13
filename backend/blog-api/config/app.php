@@ -187,4 +187,8 @@ return [
         'Socialite' => Laravel\Socialite\Facades\Socialite::class,
     ])->toArray(),
 
+    // 👇 thêm dòng này
+    'frontend_url' => env('APP_FRONTEND_URL', 'http://localhost:3000'),
+
+
 ];
