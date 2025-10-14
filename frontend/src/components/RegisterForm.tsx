@@ -4,6 +4,7 @@ import axios from "axios";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { HiEye, HiEyeOff } from "react-icons/hi"; // 👈 thêm icon mắt
 
 export default function RegisterForm() {
   const router = useRouter();
@@ -15,6 +16,10 @@ export default function RegisterForm() {
   });
   const [loading, setLoading] = useState(false);
 
+  // 👁‍🗨 Trạng thái ẩn/hiện mật khẩu
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+
   // ✅ Đăng ký
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,7 +30,6 @@ export default function RegisterForm() {
       const { user_id, message } = res.data;
 
       toast.success(message);
-      // 👉 chuyển sang trang verify OTP + truyền user_id và email
       router.push(`/verify-otp?user_id=${user_id}&email=${encodeURIComponent(form.email)}`);
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Đăng ký thất bại");
@@ -61,24 +65,48 @@ export default function RegisterForm() {
           onChange={(e) => setForm({ ...form, email: e.target.value })}
           required
         />
-        <input
-          type="password"
-          placeholder="Mật khẩu"
-          className="w-full p-3 border rounded-lg"
-          value={form.password}
-          onChange={(e) => setForm({ ...form, password: e.target.value })}
-          required
-        />
-        <input
-          type="password"
-          placeholder="Xác nhận mật khẩu"
-          className="w-full p-3 border rounded-lg"
-          value={form.password_confirmation}
-          onChange={(e) =>
-            setForm({ ...form, password_confirmation: e.target.value })
-          }
-          required
-        />
+
+        {/* Ô nhập mật khẩu */}
+        <div className="relative">
+          <input
+            type={showPassword ? "text" : "password"}
+            placeholder="Mật khẩu"
+            className="w-full p-3 pr-11 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+            value={form.password}
+            onChange={(e) => setForm({ ...form, password: e.target.value })}
+            required
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword((s) => !s)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-blue-600 transition-colors"
+            aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+          >
+            {showPassword ? <HiEyeOff size={20} /> : <HiEye size={20} />}
+          </button>
+        </div>
+
+        {/* Ô nhập xác nhận mật khẩu */}
+        <div className="relative">
+          <input
+            type={showConfirm ? "text" : "password"}
+            placeholder="Xác nhận mật khẩu"
+            className="w-full p-3 pr-11 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+            value={form.password_confirmation}
+            onChange={(e) =>
+              setForm({ ...form, password_confirmation: e.target.value })
+            }
+            required
+          />
+          <button
+            type="button"
+            onClick={() => setShowConfirm((s) => !s)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-blue-600 transition-colors"
+            aria-label={showConfirm ? "Ẩn mật khẩu xác nhận" : "Hiện mật khẩu xác nhận"}
+          >
+            {showConfirm ? <HiEyeOff size={20} /> : <HiEye size={20} />}
+          </button>
+        </div>
 
         <button
           type="submit"

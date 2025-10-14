@@ -18,13 +18,13 @@ export default function Dashboard() {
     }
     if (userStr) setUser(JSON.parse(userStr));
 
-    // Ví dụ gọi API protected:
-    api
-      .get("/user") // hoặc endpoint protected bạn có (vd: /auth/me)
-      .then((res) => setProtectedData(res.data))
-      .catch((err) => {
-        console.error("Protected API error:", err);
-      });
+    // // Ví dụ gọi API protected:
+    // api
+    //   .get("/user") // hoặc endpoint protected bạn có (vd: /auth/me)
+    //   .then((res) => setProtectedData(res.data))
+    //   .catch((err) => {
+    //     console.error("Protected API error:", err);
+    //   });
   }, []);
 
   if (!user) return <p>Đang tải...</p>;
