@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import axios from "axios";
 import { toast } from "sonner";
@@ -13,17 +13,35 @@ export default function VerifyOtpPage() {
 
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+
+  // ⏱ Countdown khi gửi lại OTP
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      const timer = setTimeout(
+        () => setResendCooldown(resendCooldown - 1),
+        1000
+      );
+      return () => clearTimeout(timer);
+    }
+  }, [resendCooldown]);
 
   // ✅ Xác minh OTP
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!userId) return toast.error("Thiếu thông tin user!");
+
     setLoading(true);
 
     try {
-      const res = await axios.post("http://127.0.0.1:8000/api/auth/verify-otp", {
-        user_id: userId,
-        otp,
-      });
+      const res = await axios.post(
+        "http://127.0.0.1:8000/api/auth/verify-otp",
+        {
+          user_id: userId,
+          otp,
+        }
+      );
       toast.success(res.data.message + " 🎉");
       setTimeout(() => router.push("/login"), 1500);
     } catch (err: any) {
@@ -35,6 +53,9 @@ export default function VerifyOtpPage() {
 
   // ✅ Gửi lại OTP
   const handleResendOtp = async () => {
+    if (!userId) return toast.error("Thiếu thông tin user!");
+    if (resendCooldown > 0) return;
+
     setLoading(true);
     try {
       const res = await axios.post(
@@ -44,6 +65,7 @@ export default function VerifyOtpPage() {
         }
       );
       toast.success(res.data.message);
+      setResendCooldown(30); // đếm ngược 30s
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Không thể gửi lại OTP");
     } finally {
@@ -88,10 +110,12 @@ export default function VerifyOtpPage() {
         <button
           type="button"
           onClick={handleResendOtp}
-          disabled={loading}
+          disabled={loading || resendCooldown > 0}
           className="w-full border border-gray-400 text-gray-700 py-3 rounded-lg hover:bg-gray-100 transition"
         >
-          Gửi lại OTP
+          {resendCooldown > 0
+            ? `Gửi lại OTP sau ${resendCooldown}s`
+            : "Gửi lại OTP"}
         </button>
 
         <p className="text-center text-sm text-gray-600 mt-4">

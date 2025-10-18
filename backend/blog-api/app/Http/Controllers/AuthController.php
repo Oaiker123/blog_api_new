@@ -171,7 +171,42 @@ class AuthController extends Controller
         ]);
     }
 
-    // Đăng nhập
+    public function resendOtp(Request $request)
+    {
+        $request->validate([
+            'user_id' => 'required|integer|exists:users,id',
+        ]);
+
+        $user = User::find($request->user_id);
+
+        // ⏱ Giới hạn resend (1 phút)
+        if ($user->otp_sent_at && now()->diffInSeconds($user->otp_sent_at) < 60) {
+            return response()->json([
+                'message' => 'Vui lòng chờ 1 phút trước khi gửi lại OTP.',
+            ], 429);
+        }
+
+        // 🔹 Sinh lại OTP mới
+        $otp = rand(100000, 999999);
+        $user->otp_code = $otp;
+        $user->otp_expires_at = now()->addMinutes(10);
+        $user->otp_sent_at = now();
+        $user->save();
+
+        // 🔹 Gửi mail
+        Mail::raw("Mã OTP mới của bạn là: $otp (hết hạn sau 10 phút).", function ($message) use ($user) {
+            $message->to($user->email)
+                    ->subject('Mã OTP mới');
+        });
+
+        return response()->json([
+            'message' => 'OTP mới đã được gửi tới email của bạn.',
+        ], 200);
+    }
+
+
+
+    // 🔹 Đăng nhập
     public function login(Request $request)
     {
         $request->validate([
@@ -181,33 +216,45 @@ class AuthController extends Controller
 
         $user = User::where('email', $request->email)->first();
 
-        // Nếu không có user
+        // ⚠️ Không có user
         if (!$user) {
             return response()->json([
-                'message' => 'Tai khoan khong ton tai!'
+                'status'  => 'error',
+                'message' => 'Tài khoản không tồn tại. Vui lòng kiểm tra lại email!',
             ], 404);
         }
 
-        // Nếu sai mật khẩu
+        // ❌ Sai mật khẩu
         if (!Hash::check($request->password, $user->password)) {
             return response()->json([
-                'message' => 'Mat khau khong chinh xac!'
+                'status'  => 'error',
+                'message' => 'Mật khẩu không chính xác. Vui lòng thử lại!',
             ], 401);
         }
 
+        // ⚠️ Tài khoản chưa xác minh email
         if (!$user->email_verified_at) {
             return response()->json([
-                'message' => 'Tai khoan chua xac minh email!',
+                'status'  => 'warning',
+                'message' => 'Tài khoản chưa xác minh email!',
                 'user_id' => $user->id,
                 'email'   => $user->email,
             ], 403);
         }
-        // Nếu đăng nhập đúng
+
+        // ✅ Đăng nhập thành công
         $token = $user->createToken('api-token')->plainTextToken;
 
         return response()->json([
-            'message' => 'dang nhap thanh cong!',
-            'user'    => $user,
+            'status'  => 'success',
+            'message' => 'Đăng nhập thành công!',
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'roles' => $user->getRoleNames(), // ✅ ["Super Admin", "Author"]
+                'permissions' => $user->getAllPermissions()->pluck('name'),
+            ],
             'token'   => $token,
         ]);
     }

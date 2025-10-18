@@ -1,45 +1,38 @@
 "use client";
 
 import { useEffect } from "react";
-import { api } from "@/lib/api";
-import { toast } from "sonner";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
-export default function Page() {
+export default function RootRedirect() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
-    // ✅ Gọi API test (chỉ để kiểm tra token)
-    api
-      .get("/test")
-      .then((res) => console.log("✅ API response:", res.data))
-      .catch((err) => console.error("❌ API error:", err));
-  }, []);
+    const token = searchParams.get("token");
+    const userParam = searchParams.get("user");
 
-  // 🟢 Hàm Logout
-  const handleLogout = async () => {
-    try {
-      await api.post("/auth/logout");
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
+    if (token && userParam) {
+      try {
+        const user = JSON.parse(decodeURIComponent(userParam));
 
-      toast.success("✅ Đăng xuất thành công!");
-      router.push("/login");
-    } catch (error: any) {
-      console.error(error);
-      toast.error("❌ Lỗi khi đăng xuất!");
+        // ✅ Lưu thông tin vào localStorage
+        localStorage.setItem("token", token);
+        localStorage.setItem("user", JSON.stringify(user));
+
+        // 🔁 Chuyển hướng sang /home
+        router.replace("/home");
+      } catch (err) {
+        console.error("Lỗi khi parse user:", err);
+      }
+    } else {
+      // Nếu không có token thì vẫn vào /home
+      router.replace("/home");
     }
-  };
+  }, [router, searchParams]);
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen gap-4">
-      <h1 className="text-xl font-semibold">Test API Page</h1>
-      <button
-        onClick={handleLogout}
-        className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition"
-      >
-        Đăng xuất
-      </button>
+    <div className="flex items-center justify-center h-screen">
+      <p className="text-gray-500 text-lg">Đang xử lý đăng nhập...</p>
     </div>
   );
 }

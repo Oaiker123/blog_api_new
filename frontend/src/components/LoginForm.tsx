@@ -23,24 +23,32 @@ export default function LoginPage() {
 
     toast.promise(promise, {
       loading: "🔄 Đang đăng nhập...",
+
       success: (res) => {
         const data = res.data;
         const token = data.token ?? data.access_token ?? data.accessToken;
+
         if (token) localStorage.setItem("token", token);
         if (data.user) localStorage.setItem("user", JSON.stringify(data.user));
 
-        router.push("/");
+        const roleNames = data.user?.roles?.map((r: any) => r.name || r) || [];
+
+        // ✅ Điều hướng theo role
+        if (roleNames.includes("Super Admin")) {
+          router.push("/admin/dashboard");
+        } else {
+          router.push("/home");
+        }
+
         return data.message || "✅ Đăng nhập thành công!";
       },
+
       error: (err) => {
         const status = err.response?.status;
         const msg = err.response?.data?.message || "Đăng nhập thất bại!";
 
-        if (
-          status === 403 ||
-          msg.toLowerCase().includes("chua xac minh") ||
-          msg.toLowerCase().includes("chưa xác minh")
-        ) {
+        // ⚠️ Chưa xác minh email
+        if (status === 403 || msg.toLowerCase().includes("chưa xác minh")) {
           const user_id = err.response?.data?.user_id;
           const pendingEmail = err.response?.data?.email || email;
 
@@ -53,12 +61,20 @@ export default function LoginPage() {
                 user_id ?? ""
               }`
             );
-          }, 1000);
+          }, 1200);
 
-          return "⚠️ Tài khoản chưa xác minh. Đang chuyển sang trang OTP...";
+          return "⚠️ Tài khoản chưa xác minh email. Đang chuyển sang trang OTP...";
         }
 
-        throw new Error(msg);
+        if (status === 401) {
+          return "❌ Mật khẩu không chính xác. Vui lòng thử lại!";
+        }
+
+        if (status === 404) {
+          return "🚫 Tài khoản không tồn tại. Vui lòng kiểm tra lại email!";
+        }
+
+        return msg || "Đăng nhập thất bại! Vui lòng thử lại.";
       },
     });
   };

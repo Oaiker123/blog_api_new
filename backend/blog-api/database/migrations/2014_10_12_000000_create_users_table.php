@@ -19,6 +19,7 @@ return new class extends Migration
         $table->string('password')->nullable(); // để trống nếu đăng nhập social
         $table->string('otp_code')->nullable();
         $table->timestamp('otp_expires_at')->nullable();
+        $table->timestamp('otp_sent_at')->nullable();
         $table->boolean('is_verified')->default(false);
         $table->rememberToken();
         $table->timestamps();

@@ -27,18 +27,20 @@ use Illuminate\Support\Facades\Route;
 // 🔐 AUTH ROUTES
 // -----------------------------------
 Route::prefix('auth')->group(function () {
+    // 🔹 Đăng ký & Xác minh OTP
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/verify-otp', [AuthController::class, 'verifyOtp']);
     Route::post('/resend-otp', [AuthController::class, 'resendOtp']);
 
+    // 🔹 Đăng nhập / Đăng xuất / Lấy thông tin
     Route::post('/login', [AuthController::class, 'login']);
     Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
     Route::get('/me', [AuthController::class, 'me'])->middleware('auth:sanctum');
 
+    // 🔹 Social Login (Google / Facebook / Github)
     Route::get('/{provider}/redirect', [SocialAuthController::class, 'redirect']);
     Route::get('/{provider}/callback', [SocialAuthController::class, 'callback']);
 });
-
 // -----------------------------------
 // 🧑‍💼 ADMIN ROUTES (chỉ Super Admin được quyền)
 // -----------------------------------
