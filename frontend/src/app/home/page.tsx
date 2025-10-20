@@ -1,36 +1,111 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import Header from "./components/Header";
 
 export default function HomePage() {
+  const [scrollY, setScrollY] = useState(0);
+
+  // 🎢 Theo dõi vị trí cuộn để tạo hiệu ứng parallax
   useEffect(() => {
-    api
-      .get("/test")
-      .then((res) => console.log("✅ API response:", res.data))
-      .catch((err) => console.error("❌ API error:", err));
+    const handleScroll = () => setScrollY(window.scrollY);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
-      {/* 🔹 Header tái sử dụng */}
+      {/* 🔹 Header */}
       <Header />
 
-      {/* 🔹 Nội dung chính */}
-      <main className="flex-1 flex flex-col items-center justify-center text-center px-4">
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">🎉 Chào mừng đến trang Home</h1>
-        <p className="text-gray-600 mb-6">
-          Đây là khu vực chính của người dùng sau khi đăng nhập.
+      {/* 🔹 Hero Section có parallax */}
+      <section
+        className="relative flex flex-col items-center justify-center text-center min-h-[90vh] overflow-hidden bg-gradient-to-b from-blue-100 via-white to-gray-50"
+        style={{
+          transform: `translateY(${scrollY * 0.2}px)`, // 👈 Hiệu ứng parallax
+          transition: "transform 0.1s linear",
+        }}
+      >
+        {/* Background mờ */}
+        <div className="absolute inset-0 bg-[url('/hero-bg.jpg')] bg-cover bg-center opacity-10" />
+
+        <div
+          className="relative z-10 transition-all duration-500"
+          style={{
+            transform: `translateY(${scrollY * 0.1}px)`,
+            opacity: Math.max(1 - scrollY / 400, 0.2),
+          }}
+        >
+          <h1 className="text-5xl font-extrabold text-gray-800 mb-4 drop-shadow-sm">
+            🎉 Chào mừng đến với <span className="text-blue-600">MyApp</span>
+          </h1>
+          <p className="text-gray-600 max-w-2xl mx-auto mb-8 text-lg">
+            Trải nghiệm ứng dụng hiện đại, mượt mà và dễ sử dụng.
+          </p>
+
+          <button
+            onClick={() => console.log("Đi đến bài viết...")}
+            className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:shadow-lg hover:bg-blue-700 transition-all active:scale-95"
+          >
+            🚀 Bắt đầu ngay
+          </button>
+        </div>
+      </section>
+
+      {/* 🔹 Section tính năng */}
+      <section className="py-24 bg-white text-center">
+        <h2 className="text-3xl font-semibold mb-10 text-gray-800">
+          ✨ Tính năng nổi bật
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto px-6">
+          {["Giao diện đẹp", "Bảo mật cao", "Hiệu năng tốt"].map((feature, i) => (
+            <div
+              key={i}
+              className="p-8 rounded-2xl shadow-sm border border-gray-100 bg-gray-50 hover:shadow-md transition-all hover:-translate-y-1"
+            >
+              <h3 className="text-lg font-semibold mb-2 text-blue-600">{feature}</h3>
+              <p className="text-gray-600">
+                Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque
+                facilisis et nulla at ultricies.
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* 🔹 Section giới thiệu */}
+      <section className="py-24 bg-gray-100 text-center">
+        <h2 className="text-3xl font-semibold mb-6 text-gray-800">
+          🚀 Giới thiệu thêm
+        </h2>
+        <p className="max-w-3xl mx-auto text-gray-600 mb-10">
+          Đây là nội dung để bạn thử hiệu ứng cuộn, header sticky, và các thành
+          phần giao diện động.
         </p>
 
-        <button
-          onClick={() => console.log("Đi đến bài viết...")}
-          className="px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-        >
-          Xem bài viết
-        </button>
-      </main>
+        <div className="max-w-5xl mx-auto grid md:grid-cols-2 gap-6 px-6">
+          {[1, 2, 3, 4].map((i) => (
+            <div
+              key={i}
+              className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition hover:-translate-y-1"
+            >
+              <h3 className="font-semibold text-blue-600 mb-2">
+                Mục nội dung {i}
+              </h3>
+              <p className="text-gray-600">
+                Lorem ipsum dolor sit amet consectetur adipisicing elit. Ullam,
+                voluptas.
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* 🔹 Footer */}
+      <footer className="bg-gray-900 text-gray-400 py-6 text-center text-sm">
+        © 2025 MyApp. All rights reserved.
+      </footer>
     </div>
   );
 }
