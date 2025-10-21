@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import axios from "axios";
 import { toast } from "sonner";
@@ -11,9 +11,21 @@ export default function VerifyOtpPage() {
   const userId = searchParams.get("user_id");
   const email = searchParams.get("email");
 
-  const [otp, setOtp] = useState("");
+  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const [loading, setLoading] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
+
+  // ✅ Lấy lại OTP tạm khi reload
+  useEffect(() => {
+    const savedOtp = localStorage.getItem("tempOTP");
+    if (savedOtp) setOtp(savedOtp.split(""));
+  }, []);
+
+  // ✅ Lưu OTP mỗi khi thay đổi
+  useEffect(() => {
+    localStorage.setItem("tempOTP", otp.join(""));
+  }, [otp]);
 
   // ⏱ Countdown khi gửi lại OTP
   useEffect(() => {
@@ -26,11 +38,35 @@ export default function VerifyOtpPage() {
     }
   }, [resendCooldown]);
 
+  // ✅ Xử lý nhập số và điều hướng giữa các ô
+  const handleChange = (value: string, index: number) => {
+    if (!/^\d?$/.test(value)) return; // chỉ cho nhập 1 ký tự số
+    const newOtp = [...otp];
+    newOtp[index] = value;
+    setOtp(newOtp);
+
+    // tự động nhảy sang ô kế tiếp
+    if (value && index < 5) {
+      inputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleKeyDown = (
+    e: React.KeyboardEvent<HTMLInputElement>,
+    index: number
+  ) => {
+    if (e.key === "Backspace" && !otp[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
+  };
+
   // ✅ Xác minh OTP
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (!userId) return toast.error("Thiếu thông tin user!");
+
+    const otpCode = otp.join("");
+    if (!/^\d{6}$/.test(otpCode)) return toast.error("OTP phải gồm 6 số!");
 
     setLoading(true);
 
@@ -39,10 +75,14 @@ export default function VerifyOtpPage() {
         "http://127.0.0.1:8000/api/auth/verify-otp",
         {
           user_id: userId,
-          otp,
+          otp: otpCode,
         }
       );
       toast.success(res.data.message + " 🎉");
+
+      // ✅ Xóa OTP lưu tạm
+      localStorage.removeItem("tempOTP");
+
       setTimeout(() => router.push("/login"), 1500);
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Xác minh thất bại");
@@ -65,7 +105,7 @@ export default function VerifyOtpPage() {
         }
       );
       toast.success(res.data.message);
-      setResendCooldown(30); // đếm ngược 30s
+      setResendCooldown(30);
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Không thể gửi lại OTP");
     } finally {
@@ -80,24 +120,33 @@ export default function VerifyOtpPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
         onSubmit={handleVerify}
-        className="space-y-4"
+        className="space-y-6"
       >
-        <h2 className="text-2xl font-semibold text-center mb-4">
+        <h2 className="text-2xl font-semibold text-center mb-2">
           Xác minh OTP
         </h2>
         <p className="text-center text-gray-600">
           Nhập mã OTP đã gửi tới email: <b>{email}</b>
         </p>
 
-        <input
-          type="text"
-          placeholder="Nhập mã OTP (6 số)"
-          className="w-full p-3 border rounded-lg text-center tracking-widest"
-          maxLength={6}
-          value={otp}
-          onChange={(e) => setOtp(e.target.value)}
-          required
-        />
+        {/* ✅ Giao diện 6 ô nhập OTP */}
+        <div className="flex justify-between gap-2 mt-4">
+          {otp.map((digit, index) => (
+            <input
+              key={index}
+              ref={(el) => {
+                inputRefs.current[index] = el;
+              }}
+              type="text"
+              inputMode="numeric"
+              maxLength={1}
+              value={digit}
+              onChange={(e) => handleChange(e.target.value, index)}
+              onKeyDown={(e) => handleKeyDown(e, index)}
+              className="w-12 h-12 text-center text-xl font-semibold border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+            />
+          ))}
+        </div>
 
         <button
           type="submit"
@@ -121,6 +170,7 @@ export default function VerifyOtpPage() {
         <p className="text-center text-sm text-gray-600 mt-4">
           Chưa có tài khoản?{" "}
           <button
+           type="button"
             onClick={() => router.push("/register")}
             className="text-blue-600 hover:underline"
           >

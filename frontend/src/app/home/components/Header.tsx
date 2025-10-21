@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { LogOut, LogIn, Menu, X, ChevronDown, ChevronUp } from "lucide-react";
+import { LogOut, LogIn, Menu, X } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 
@@ -16,6 +16,7 @@ export default function Header() {
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [isClient, setIsClient] = useState(false); // ✅ mới thêm
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [hidden, setHidden] = useState(false);
@@ -23,6 +24,7 @@ export default function Header() {
   const dropdownRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
+    setIsClient(true); // ✅ đánh dấu đã chạy bên client
     const handleResize = () => setIsMobile(window.innerWidth < 768);
     const handleScroll = (() => {
       let lastScroll = 0;
@@ -41,7 +43,6 @@ export default function Header() {
     window.addEventListener("resize", handleResize);
     window.addEventListener("scroll", handleScroll);
 
-    // Click ra ngoài đóng dropdown
     const handleClickOutside = (e: MouseEvent) => {
       if (
         dropdownRef.current &&
@@ -75,6 +76,9 @@ export default function Header() {
 
   const handleAuthRedirect = () => router.push("/login");
 
+  // ❗ Chưa mount client thì không render (tránh nhảy layout)
+  if (!isClient) return null;
+
   return (
     <header
       className={`fixed top-0 left-0 w-full z-50 backdrop-blur-md border-b transition-all duration-500 ease-in-out transform ${
@@ -97,7 +101,6 @@ export default function Header() {
         {/* 💻 Menu desktop + Search */}
         {!isMobile && (
           <div className="flex-1 flex justify-center items-center gap-8 text-gray-700 font-medium">
-            {/* Menu items */}
             <nav className="flex items-center gap-8">
               {menuItems.map((item) => (
                 <button
@@ -144,8 +147,7 @@ export default function Header() {
         {!isMobile && (
           <div className="flex justify-end items-center relative">
             {isLoggedIn ? (
-              // 🧍 Avatar + Dropdown
-              <div className="relative">
+              <div className="relative" ref={dropdownRef}>
                 <button
                   onClick={() => setDropdownOpen(!dropdownOpen)}
                   className="flex items-center gap-2 focus:outline-none group"
@@ -181,7 +183,6 @@ export default function Header() {
                       : "opacity-0 scale-95 -translate-y-2 pointer-events-none"
                   }`}
                 >
-                  {/* Mũi tên chỉ lên trên */}
                   <div className="absolute right-4 -top-2 w-3 h-3 bg-white border-l border-t border-gray-100 rotate-45"></div>
 
                   <div className="relative z-10">
@@ -211,13 +212,13 @@ export default function Header() {
                 onClick={() => router.push("/login")}
                 className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg shadow-sm transition-all"
               >
-                Đăng nhập / Đăng ký
+                Sign In
               </button>
             )}
           </div>
         )}
 
-        {/* 📱 Toggle menu mobile */}
+        {/* 📱 Toggle mobile menu */}
         {isMobile && (
           <button
             onClick={() => setMenuOpen(!menuOpen)}
@@ -239,7 +240,7 @@ export default function Header() {
           }`}
         >
           <div className="flex flex-col py-4 space-y-1 px-5">
-            {/* 🔍 Ô tìm kiếm trên mobile — hiệu ứng nổi bật */}
+            {/* 🔍 Ô tìm kiếm trên mobile */}
             <div className="relative mb-4">
               <input
                 type="text"

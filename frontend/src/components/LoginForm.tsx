@@ -1,6 +1,6 @@
-"use client"; // ⚠️ Bắt buộc dòng đầu tiên
+"use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { motion } from "framer-motion";
@@ -8,81 +8,129 @@ import { FaGoogle, FaFacebookF } from "react-icons/fa";
 import { HiEye, HiEyeOff } from "react-icons/hi";
 import { toast } from "sonner";
 
+// 🧠 Mã hóa & Giải mã mật khẩu (base64)
+const encrypt = (text: string) => {
+  try {
+    return btoa(text); // encode
+  } catch {
+    return text;
+  }
+};
+
+const decrypt = (text: string) => {
+  try {
+    return atob(text); // decode
+  } catch {
+    return text;
+  }
+};
+
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
 
-  // ✅ Đăng nhập (dùng toast.promise)
+  // 🧩 Lấy lại dữ liệu đã lưu (email, password, rememberMe)
+  useEffect(() => {
+    const savedEmail = localStorage.getItem("loginEmail");
+    const savedPassword = localStorage.getItem("loginPassword");
+    const savedRemember = localStorage.getItem("rememberMe") === "true";
+
+    if (savedEmail) setEmail(savedEmail);
+    if (savedPassword) setPassword(decrypt(savedPassword)); // 🔒 Giải mã
+    setRememberMe(savedRemember);
+  }, []);
+
+  // 💾 Lưu email & password mỗi khi người dùng nhập
+  useEffect(() => {
+    localStorage.setItem("loginEmail", email);
+  }, [email]);
+
+  useEffect(() => {
+    localStorage.setItem("loginPassword", encrypt(password)); // 🔒 Mã hóa
+  }, [password]);
+
+  // ✅ Xử lý đăng nhập
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
 
     const promise = api.post("/auth/login", { email, password });
 
-    toast.promise(promise, {
-      loading: "🔄 Đang đăng nhập...",
+    toast.promise(
+      promise
+        .then((res) => {
+          setLoading(false);
+          return res;
+        })
+        .catch((err) => {
+          setLoading(false);
+          throw err;
+        }),
+      {
+        loading: "🔄 Đang đăng nhập...",
+        success: (res) => {
+          const data = res.data;
+          const token = data.token ?? data.access_token ?? data.accessToken;
 
-      success: (res) => {
-        const data = res.data;
-        const token = data.token ?? data.access_token ?? data.accessToken;
+          if (token) localStorage.setItem("token", token);
+          if (data.user)
+            localStorage.setItem("user", JSON.stringify(data.user));
 
-        if (token) localStorage.setItem("token", token);
-        if (data.user) localStorage.setItem("user", JSON.stringify(data.user));
+          if (rememberMe) {
+            localStorage.setItem("rememberMe", "true");
+            localStorage.setItem("loginEmail", email);
+            localStorage.setItem("loginPassword", encrypt(password)); // ✅ Lưu bản mã hóa
+          } else {
+            localStorage.removeItem("loginEmail");
+            localStorage.removeItem("loginPassword");
+            localStorage.removeItem("rememberMe");
+          }
 
-        const roleNames = data.user?.roles?.map((r: any) => r.name || r) || [];
+          const roleNames =
+            data.user?.roles?.map((r: any) => r.name || r) || [];
+          if (roleNames.includes("Super Admin"))
+            router.push("/admin/dashboard");
+          else router.push("/home");
 
-        // ✅ Điều hướng theo role
-        if (roleNames.includes("Super Admin")) {
-          router.push("/admin/dashboard");
-        } else {
-          router.push("/home");
-        }
+          return data.message || "✅ Đăng nhập thành công!";
+        },
+        error: (err) => {
+          const status = err.response?.status;
+          const msg = err.response?.data?.message || "Đăng nhập thất bại!";
 
-        return data.message || "✅ Đăng nhập thành công!";
-      },
+          if (status === 403 || msg.toLowerCase().includes("chưa xác minh")) {
+            const user_id = err.response?.data?.user_id;
+            const pendingEmail = err.response?.data?.email || email;
 
-      error: (err) => {
-        const status = err.response?.status;
-        const msg = err.response?.data?.message || "Đăng nhập thất bại!";
+            localStorage.setItem("pendingEmail", pendingEmail);
+            if (user_id) localStorage.setItem("pendingUserId", String(user_id));
 
-        // ⚠️ Chưa xác minh email
-        if (status === 403 || msg.toLowerCase().includes("chưa xác minh")) {
-          const user_id = err.response?.data?.user_id;
-          const pendingEmail = err.response?.data?.email || email;
+            setTimeout(() => {
+              router.push(
+                `/verify-otp?email=${encodeURIComponent(
+                  pendingEmail
+                )}&user_id=${user_id ?? ""}`
+              );
+            }, 1200);
 
-          localStorage.setItem("pendingEmail", pendingEmail);
-          if (user_id) localStorage.setItem("pendingUserId", String(user_id));
+            return "⚠️ Tài khoản chưa xác minh email. Đang chuyển sang trang OTP...";
+          }
 
-          setTimeout(() => {
-            router.push(
-              `/verify-otp?email=${encodeURIComponent(pendingEmail)}&user_id=${
-                user_id ?? ""
-              }`
-            );
-          }, 1200);
-
-          return "⚠️ Tài khoản chưa xác minh email. Đang chuyển sang trang OTP...";
-        }
-
-        if (status === 401) {
-          return "❌ Mật khẩu không chính xác. Vui lòng thử lại!";
-        }
-
-        if (status === 404) {
-          return "🚫 Tài khoản không tồn tại. Vui lòng kiểm tra lại email!";
-        }
-
-        return msg || "Đăng nhập thất bại! Vui lòng thử lại.";
-      },
-    });
+          if (status === 401) return "❌ Mật khẩu không chính xác!";
+          if (status === 404) return "🚫 Tài khoản không tồn tại!";
+          return msg || "Đăng nhập thất bại!";
+        },
+      }
+    );
   };
 
-  // 🟣 Đăng nhập bằng Google
+  // 🟣 Đăng nhập Google/Facebook
   const handleSocialLogin = (provider: string) => {
     toast.loading(`🔄 Đang chuyển hướng đến ${provider}...`);
-    // 🟢 Sửa dòng này:
     window.location.href = `http://localhost:8000/api/auth/${provider}/redirect`;
   };
 
@@ -120,8 +168,6 @@ export default function LoginPage() {
             placeholder="••••••••"
             autoComplete="current-password"
           />
-
-          {/* 👁 Nút ẩn/hiện mật khẩu */}
           <button
             type="button"
             onClick={() => setShowPassword((s) => !s)}
@@ -130,6 +176,19 @@ export default function LoginPage() {
           >
             {showPassword ? <HiEyeOff size={20} /> : <HiEye size={20} />}
           </button>
+        </div>
+
+        {/* ✅ Checkbox Remember Me */}
+        <div className="flex items-center justify-between text-sm mt-2">
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={rememberMe}
+              onChange={(e) => setRememberMe(e.target.checked)}
+              className="w-4 h-4"
+            />
+            Ghi nhớ đăng nhập
+          </label>
         </div>
 
         <button
