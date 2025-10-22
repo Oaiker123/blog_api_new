@@ -2,69 +2,81 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Sidebar from "@/components/admin/Sidebar";
+import { Menu, X } from "lucide-react";
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const router = useRouter();
-  const [role, setRole] = useState<string>("");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // mobile open
+  const [isCollapsed, setIsCollapsed] = useState(false); // desktop collapsed
+  const [isDesktop, setIsDesktop] = useState(true);
+
+  useEffect(() => {
+    // xác định desktop hoặc mobile
+    const handleResize = () => setIsDesktop(window.innerWidth >= 1024);
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem("user") || "{}");
     const roles = user.roles || [];
-    const mainRole = roles[0]; // lấy role đầu tiên
-    setRole(mainRole);
-
-    // ✅ Nếu không phải Super Admin hoặc Moderator → chặn vào admin
     if (!roles.includes("Super Admin") && !roles.includes("Moderator")) {
       router.replace("/home");
     }
   }, [router]);
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    router.push("/login");
-  };
-
   return (
     <div className="flex min-h-screen bg-gray-100">
       {/* Sidebar */}
-      <aside className="w-64 bg-blue-700 text-white p-4 flex flex-col">
-        <h2 className="text-xl font-bold mb-6">🛠️ Quản trị</h2>
-        <nav className="flex flex-col gap-3 flex-1">
+      <Sidebar
+        isCollapsed={isCollapsed}
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+        isDesktop={isDesktop}
+      />
+
+      {/* Main content: chừa chỗ cho sidebar trên desktop */}
+      <div
+        className={`flex-1 flex flex-col transition-all duration-300 ${
+          isDesktop
+            ? isCollapsed
+              ? "lg:ml-[80px]"
+              : "lg:ml-[260px]"
+            : "lg:ml-0"
+        }`}
+      >
+        {/* Header */}
+        <header className="flex items-center justify-between bg-white shadow-sm px-4 py-3 sticky top-0 z-30">
+          {/* mobile menu button */}
           <button
-            onClick={() => router.push("/admin/dashboard")}
-            className="text-left hover:bg-blue-800 p-2 rounded"
+            onClick={() => setIsSidebarOpen(true)}
+            className="lg:hidden bg-blue-600 text-white p-2 rounded"
+            aria-label="Open menu"
           >
-            📊 Dashboard
+            <Menu size={22} />
           </button>
 
-          {/* ✅ Moderator và Super Admin đều xem & duyệt bài được */}
+          {/* desktop collapse toggle */}
           <button
-            className="text-left hover:bg-blue-800 p-2 rounded"
+            onClick={() => setIsCollapsed((s) => !s)}
+            className="hidden lg:inline-flex items-center justify-center bg-blue-600 text-white p-2 rounded hover:bg-blue-700 transition"
+            title={isCollapsed ? "Mở rộng menu" : "Thu gọn menu"}
           >
-            📰 Duyệt bài viết
+            {isCollapsed ? <Menu size={20} /> : <X size={20} />}
           </button>
 
-          {/* ⚠️ Chỉ Super Admin mới có menu người dùng */}
-          {role === "Super Admin" && (
-            <button
-              className="text-left hover:bg-blue-800 p-2 rounded"
-            >
-              👥 Quản lý người dùng
-            </button>
-          )}
-        </nav>
+          <h1 className="text-lg font-semibold">Bảng điều khiển</h1>
+        </header>
 
-        <button
-          onClick={handleLogout}
-          className="bg-red-600 hover:bg-red-700 py-2 rounded mt-auto"
-        >
-          🚪 Đăng xuất
-        </button>
-      </aside>
-
-      {/* Main content */}
-      <main className="flex-1 p-8">{children}</main>
+        {/* Nội dung chính */}
+        <main className="flex-1 p-4 lg:p-8">{children}</main>
+      </div>
     </div>
   );
 }
