@@ -4,16 +4,46 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import Header from "./components/Header";
 
+interface UserInfo {
+  id: number;
+  name: string;
+  email: string;
+  role: string[];
+  permissions: string[];
+}
+
 export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [fadeOut, setFadeOut] = useState(false);
   const [scrollY, setScrollY] = useState(0);
+
+  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
 
   // 🎢 Theo dõi vị trí cuộn để tạo hiệu ứng parallax
   useEffect(() => {
     const handleScroll = () => setScrollY(window.scrollY);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  // 🔹 Gọi API lấy thông tin user hiện tại
+  useEffect(() => {
+    const fetchUserInfo = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) return;
+
+        const res = await api.get("/auth/me", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        setUserInfo(res.data.user);
+      } catch (err) {
+        console.error("Không thể lấy thông tin user:", err);
+      }
+    };
+
+    fetchUserInfo();
   }, []);
 
   // ⏳ Hiệu ứng loading
@@ -137,6 +167,30 @@ export default function HomePage() {
       {/* 🔹 Footer */}
       <footer className="bg-gray-900 text-gray-400 py-6 text-center text-sm">
         © 2025 MyApp. All rights reserved.
+        {/* 🔹 Hiển thị thông tin user */}
+        {userInfo && (
+          <section className="p-6 m-6 bg-white rounded-2xl shadow-md border border-gray-100">
+            <h2 className="text-2xl font-semibold text-blue-600 mb-4">
+              👤 Thông tin tài khoản
+            </h2>
+            <p className="text-gray-700">
+              <strong>Tên:</strong> {userInfo.name}
+            </p>
+            <p className="text-gray-700">
+              <strong>Email:</strong> {userInfo.email}
+            </p>
+            <p className="text-gray-700">
+              <strong>Role:</strong>{" "}
+              {userInfo.role.length > 0 ? userInfo.role.join(", ") : "Không có"}
+            </p>
+            <p className="text-gray-700">
+              <strong>Quyền:</strong>{" "}
+              {userInfo.permissions.length > 0
+                ? userInfo.permissions.join(", ")
+                : "Không có"}
+            </p>
+          </section>
+        )}
       </footer>
     </div>
   );

@@ -53,4 +53,11 @@ class User extends Authenticatable
         return $this->hasOne(Profile::class);
     }
 
+    // public function permissions()
+    // {
+    //     return $this->belongsToMany(\Spatie\Permission\Models\Permission::class, 'model_has_permissions', 'model_id', 'permission_id');
+    // }
+
+    protected $guard_name = 'web';
+
 }

@@ -1,5 +1,6 @@
 "use client";
 import DashboardChart from "@/components/admin/DashboardChart";
+
 import { motion } from "framer-motion";
 
 export default function DashboardPage() {

@@ -139,7 +139,7 @@ export default function Sidebar({
           {navItem(<LayoutDashboard size={18} />, "Dashboard", "/admin/dashboard")}
           {navItem(<Newspaper size={18} />, "Duyệt bài viết", "/admin/posts")}
           {role === "Super Admin" &&
-            navItem(<Users size={18} />, "Quản lý người dùng", "/admin/users")}
+            navItem(<Users size={18} />, "Quản lý người dùng", "/admin/permissions")}
         </motion.nav>
 
         {/* Logout */}

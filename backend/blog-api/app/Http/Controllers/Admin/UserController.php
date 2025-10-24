@@ -5,17 +5,33 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Spatie\Permission\Models\Permission;
 
 class UserController extends Controller
 {
-    // 📄 Lấy danh sách tất cả user
     public function index()
     {
-        $users = User::with('roles')->get();
+        $users = User::with(['roles', 'permissions'])->get();
+
+        $data = $users->map(function ($user) {
+            return [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'roles' => $user->roles->pluck('name'),
+                // 🔥 Lấy đủ quyền của user
+                'permissions' => $user->getAllPermissions()->map(function ($perm) {
+                    return [
+                        'id' => $perm->id,
+                        'name' => $perm->name,
+                    ];
+                })->values(),
+            ];
+        });
 
         return response()->json([
-            'message' => 'Danh sach nguoi dung',
-            'users' => $users
+            'message' => 'Danh sách người dùng',
+            'users' => $data
         ]);
     }
 
@@ -29,6 +45,14 @@ class UserController extends Controller
             'user' => $user
         ]);
     }
+
+    // 📄 Danh sách tất cả permissions để hiển thị cột
+    public function allPermissions()
+    {
+        $permissions = Permission::all();
+        return response()->json($permissions);
+    }
+
 
     // 🔁 Cập nhật role người dùng
     public function updateRole(Request $request, $id)
@@ -89,43 +113,64 @@ class UserController extends Controller
         return response()->json(['message' => 'da xoa nguoi dung thanh cong']);
     }
 
-    // 📌 Gán quyền cho user (chỉ Super Admin được phép)
     public function givePermission(Request $request, $id)
     {
         try {
-            // 1️⃣ Kiểm tra người đang đăng nhập có phải Super Admin không
             $currentUser = auth()->user();
             if (!$currentUser->hasRole('Super Admin')) {
                 return response()->json([
-                    'message' => 'Ban khong co quyen gan permission cho nguoi dung khac'
+                    'message' => 'Bạn không có quyền gán permission cho người khác'
                 ], 403);
             }
 
-            // 2️⃣ Validate input
             $request->validate([
-                'permissions' => 'required|array',
-                'permissions.*' => 'string|exists:permissions,name',
+                'permission' => 'required|string|exists:permissions,name',
             ]);
 
-            // 3️⃣ Tìm user cần cấp quyền
             $user = User::findOrFail($id);
 
-            // 4️⃣ Gán quyền
-            $user->givePermissionTo($request->permissions);
+            // ✅ BƯỚC QUAN TRỌNG NHẤT:
+            // Đảm bảo bạn đang lấy đúng key 'permission' (số ít) mà bạn đã validate.
+            $permission = $request->input('permission');
+
+            if ($user->email === 'admin@gmail.com') {
+                return response()->json([
+                    'message' => 'Không thể chỉnh sửa quyền của Super Admin'
+                ], 403);
+            }
+
+            if (!$user->hasPermissionTo($permission)) {
+                // Và sử dụng đúng biến '$permission' (số ít) ở đây.
+                $user->givePermissionTo($permission);
+            }
 
             return response()->json([
-                'message' => 'Phan quyen thanh cong',
-                'user' => $user->load('roles', 'permissions')
+                'message' => 'Phân quyền thành công',
+                'user' => [ // ✅ Trả về cấu trúc user đầy đủ
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'roles' => $user->roles->pluck('name'),
+                    'permissions' => $user->getAllPermissions()->map(function ($perm) {
+                        return [
+                            'id' => $perm->id,
+                            'name' => $perm->name,
+                        ];
+                    })->values(),
+                ]
             ]);
+
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
-                'message' => 'Du lieu khong hop le',
+                'message' => 'Dữ liệu không hợp lệ',
                 'errors' => $e->errors()
             ], 422);
+
         } catch (\Exception $e) {
+            // Lỗi 500 của bạn đang được bắt ở đây.
             return response()->json([
-                'message' => 'Co loi xay ra khi phan quyen',
-                'error' => $e->getMessage()
+                'message' => 'Có lỗi xảy ra khi phân quyền',
+                'error' => $e->getMessage() // Dòng này sẽ cho bạn biết lỗi cụ thể là gì
             ], 500);
         }
     }

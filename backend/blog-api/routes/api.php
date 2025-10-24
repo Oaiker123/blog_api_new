@@ -50,9 +50,11 @@ Route::middleware(['auth:sanctum', 'role:Super Admin'])->prefix('admin')->group(
     Route::put('/users/{id}/role', [UserController::class, 'updateRole']); // Đổi role user
     Route::delete('/users/{id}', [UserController::class, 'destroy']);   // Xóa user
 
-    // 👇 Thêm 2 route phân quyền
-    Route::post('/users/{id}/permissions', [UserController::class, 'givePermission']);
-    Route::delete('/users/{id}/permissions', [UserController::class, 'revokePermission']);
+     // 👇 Thêm mới route này
+    Route::get('/permissions', [UserController::class, 'allPermissions']);
+
+    // 👇 THAY THẾ hai route cũ bằng route PUT/PATCH duy nhất cho cập nhật nhiều quyền
+    Route::put('/users/{id}/permissions', [UserController::class, 'updatePermissions']);
 
     // 👤 Super Admin chỉnh sửa profile của người khác
     Route::put('/profiles/{id}', [ProfileController::class, 'update']);
