@@ -26,6 +26,7 @@ class User extends Authenticatable
         'otp_expires_at',
         'otp_sent_at',
         'is_verified',
+        'blocked_permissions',
     ];
 
     /**
@@ -46,6 +47,7 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
+        'blocked_permissions' => 'array',
     ];
 
     public function profile()
@@ -60,4 +62,34 @@ class User extends Authenticatable
 
     protected $guard_name = 'web';
 
+    // ⚡ Kiểm tra quyền (ghi đè mặc định)
+    public function hasPermissionTo($permission, $guardName = null): bool
+    {
+        // Nếu quyền nằm trong blocked_permissions thì từ chối luôn
+        if (in_array($permission, $this->blocked_permissions ?? [])) {
+            return false;
+        }
+
+        // Ngược lại, dùng Spatie mặc định
+        return parent::hasPermissionTo($permission, $guardName);
+    }
+
+    // 🚫 Thêm quyền bị chặn
+    public function blockPermission(string $permission)
+    {
+        $blocked = $this->blocked_permissions ?? [];
+        if (!in_array($permission, $blocked)) {
+            $blocked[] = $permission;
+            $this->blocked_permissions = $blocked;
+            $this->save();
+        }
+    }
+
+    // ✅ Gỡ bỏ chặn
+    public function unblockPermission(string $permission)
+    {
+        $blocked = $this->blocked_permissions ?? [];
+        $this->blocked_permissions = array_values(array_diff($blocked, [$permission]));
+        $this->save();
+    }
 }

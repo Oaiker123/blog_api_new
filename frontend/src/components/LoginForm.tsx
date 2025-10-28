@@ -40,7 +40,7 @@ export default function LoginPage() {
     const savedRemember = localStorage.getItem("rememberMe") === "true";
 
     if (savedEmail) setEmail(savedEmail);
-    if (savedPassword) setPassword(decrypt(savedPassword)); // 🔒 Giải mã
+    if (savedPassword) setPassword(decrypt(savedPassword));
     setRememberMe(savedRemember);
   }, []);
 
@@ -50,7 +50,7 @@ export default function LoginPage() {
   }, [email]);
 
   useEffect(() => {
-    localStorage.setItem("loginPassword", encrypt(password)); // 🔒 Mã hóa
+    localStorage.setItem("loginPassword", encrypt(password));
   }, [password]);
 
   // ✅ Xử lý đăng nhập
@@ -83,18 +83,26 @@ export default function LoginPage() {
           if (rememberMe) {
             localStorage.setItem("rememberMe", "true");
             localStorage.setItem("loginEmail", email);
-            localStorage.setItem("loginPassword", encrypt(password)); // ✅ Lưu bản mã hóa
+            localStorage.setItem("loginPassword", encrypt(password));
           } else {
             localStorage.removeItem("loginEmail");
             localStorage.removeItem("loginPassword");
             localStorage.removeItem("rememberMe");
           }
 
-          const roleNames =
-            data.user?.roles?.map((r: any) => r.name || r) || [];
-          if (roleNames.includes("Super Admin"))
+          // 🔥 Kiểm tra quyền hoặc role
+          const roleNames = data.user?.roles?.map((r: any) => r.name || r) || [];
+          const permissionNames = data.user?.permissions || [];
+
+          const canAccessAdmin =
+            roleNames.includes("Super Admin") ||
+            permissionNames.includes("access-admin");
+
+          if (canAccessAdmin) {
             router.push("/admin/dashboard");
-          else router.push("/home");
+          } else {
+            router.push("/home");
+          }
 
           return data.message || "✅ Đăng nhập thành công!";
         },

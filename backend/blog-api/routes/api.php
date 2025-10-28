@@ -44,8 +44,7 @@ Route::prefix('auth')->group(function () {
 // -----------------------------------
 // 🧑‍💼 ADMIN ROUTES (chỉ Super Admin được quyền)
 // -----------------------------------
-Route::middleware(['auth:sanctum', 'role:Super Admin'])->prefix('admin')->group(function () {
-    Route::get('/users', [UserController::class, 'index']);             // Xem danh sách user
+Route::middleware(['auth:sanctum', 'permission:access-admin'])->prefix('admin')->group(function () {    Route::get('/users', [UserController::class, 'index']);             // Xem danh sách user
     Route::get('/users/{id}', [UserController::class, 'show']);         // Xem chi tiết user
     Route::put('/users/{id}/role', [UserController::class, 'updateRole']); // Đổi role user
     Route::delete('/users/{id}', [UserController::class, 'destroy']);   // Xóa user

@@ -115,65 +115,48 @@ class UserController extends Controller
 
     public function givePermission(Request $request, $id)
     {
-        try {
-            $currentUser = auth()->user();
-            if (!$currentUser->hasRole('Super Admin')) {
-                return response()->json([
-                    'message' => 'Bạn không có quyền gán permission cho người khác'
-                ], 403);
-            }
-
-            $request->validate([
-                'permission' => 'required|string|exists:permissions,name',
-            ]);
-
-            $user = User::findOrFail($id);
-
-            // ✅ BƯỚC QUAN TRỌNG NHẤT:
-            // Đảm bảo bạn đang lấy đúng key 'permission' (số ít) mà bạn đã validate.
-            $permission = $request->input('permission');
-
-            if ($user->email === 'admin@gmail.com') {
-                return response()->json([
-                    'message' => 'Không thể chỉnh sửa quyền của Super Admin'
-                ], 403);
-            }
-
-            if (!$user->hasPermissionTo($permission)) {
-                // Và sử dụng đúng biến '$permission' (số ít) ở đây.
-                $user->givePermissionTo($permission);
-            }
-
-            return response()->json([
-                'message' => 'Phân quyền thành công',
-                'user' => [ // ✅ Trả về cấu trúc user đầy đủ
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'roles' => $user->roles->pluck('name'),
-                    'permissions' => $user->getAllPermissions()->map(function ($perm) {
-                        return [
-                            'id' => $perm->id,
-                            'name' => $perm->name,
-                        ];
-                    })->values(),
-                ]
-            ]);
-
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json([
-                'message' => 'Dữ liệu không hợp lệ',
-                'errors' => $e->errors()
-            ], 422);
-
-        } catch (\Exception $e) {
-            // Lỗi 500 của bạn đang được bắt ở đây.
-            return response()->json([
-                'message' => 'Có lỗi xảy ra khi phân quyền',
-                'error' => $e->getMessage() // Dòng này sẽ cho bạn biết lỗi cụ thể là gì
-            ], 500);
+        $currentUser = auth()->user();
+        if (!$currentUser->hasRole('Super Admin')) {
+            return response()->json(['message' => 'Bạn không có quyền gán quyền.'], 403);
         }
+
+        $user = User::findOrFail($id);
+
+        if ($user->email === 'admin@gmail.com') {
+            return response()->json(['message' => 'Không thể chỉnh sửa Super Admin'], 403);
+        }
+
+        // Nếu frontend gửi mảng => bulk update
+        if ($request->has('permissions') && is_array($request->permissions)) {
+            $request->validate([
+                'permissions' => 'required|array',
+                'permissions.*' => 'string|exists:permissions,name',
+            ]);
+
+            $user->syncPermissions($request->permissions);
+            return response()->json([
+                'message' => 'Cập nhật quyền hàng loạt thành công',
+                'user' => $user->load('permissions'),
+            ]);
+        }
+
+        // Ngược lại, nếu chỉ gán 1 quyền
+        $request->validate([
+            'permission' => 'required|string|exists:permissions,name',
+        ]);
+
+        if ($user->hasPermissionTo($request->permission)) {
+            return response()->json(['message' => 'Người dùng đã có quyền này'], 422);
+        }
+
+        $user->givePermissionTo($request->permission);
+
+        return response()->json([
+            'message' => 'Gán quyền thành công',
+            'user' => $user->load('permissions'),
+        ]);
     }
+
 
     // 📌 Gỡ quyền của user (chỉ Super Admin được phép)
     public function revokePermission(Request $request, $id)
@@ -183,7 +166,7 @@ class UserController extends Controller
             $currentUser = auth()->user();
             if (!$currentUser->hasRole('Super Admin')) {
                 return response()->json([
-                    'message' => 'Ban khong co quyen thu hoi permission'
+                    'message' => 'Bạn không có quyền thu hồi permission'
                 ], 403);
             }
 
@@ -196,24 +179,38 @@ class UserController extends Controller
             // 3️⃣ Tìm user
             $user = User::findOrFail($id);
 
-            // 4️⃣ Gỡ quyền
-            $user->revokePermissionTo($request->permissions);
+            if ($user->hasRole('Super Admin')) {
+                return response()->json(['message' => 'Không thể thu hồi quyền của Super Admin khác'], 403);
+            }
+
+            if ($user->id === $currentUser->id) {
+                return response()->json(['message' => 'Không thể tự gỡ quyền của chính mình'], 403);
+            }
+
+
+            // 4️⃣ Gỡ từng quyền
+            foreach ($request->permissions as $perm) {
+                if ($user->hasPermissionTo($perm)) {
+                    $user->revokePermissionTo($perm);
+                }
+            }
 
             return response()->json([
-                'message' => 'Thu hoi quyen thanh cong',
+                'message' => 'Thu hồi quyền thành công',
                 'user' => $user->load('roles', 'permissions')
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
-                'message' => 'Du lieu khong hop le',
+                'message' => 'Dữ liệu không hợp lệ',
                 'errors' => $e->errors()
             ], 422);
         } catch (\Exception $e) {
             return response()->json([
-                'message' => 'Co loi xay ra khi thu hoi quyen',
+                'message' => 'Có lỗi xảy ra khi thu hồi quyền',
                 'error' => $e->getMessage()
             ], 500);
         }
     }
+
 
 }

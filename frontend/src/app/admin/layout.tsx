@@ -16,7 +16,11 @@ import {
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const router = useRouter();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -30,13 +34,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const notiRef = useRef<HTMLDivElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
-  // 🧩 Fake data
+  // 🧩 Fake data demo
   const fakeNotifications = [
     { id: 1, text: "Người dùng mới vừa đăng ký tài khoản." },
     { id: 2, text: "Một bài viết đang chờ duyệt." },
     { id: 3, text: "Bình luận mới trên bài viết #25." },
   ];
 
+  // 🧠 Lấy user từ localStorage + click ngoài menu
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem("user") || "{}");
     if (user.name) setUserName(user.name);
@@ -55,8 +60,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // 🌙 Chuyển theme
   const toggleTheme = () => setTheme(theme === "light" ? "dark" : "light");
 
+  // 📱 Responsive
   useEffect(() => {
     const handleResize = () => setIsDesktop(window.innerWidth >= 1024);
     handleResize();
@@ -64,14 +71,40 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  // ✅ Kiểm tra quyền truy cập admin
+  // 🧠 Kiểm tra đăng nhập và quyền truy cập
   useEffect(() => {
-    const user = JSON.parse(localStorage.getItem("user") || "{}");
-    const roles = user.roles || [];
-    if (!roles.includes("Super Admin") && !roles.includes("Moderator")) {
+    const token = localStorage.getItem("token");
+    const userData = localStorage.getItem("user");
+
+    // ❌ Nếu chưa đăng nhập → quay lại login
+    if (!token || !userData) {
+      router.replace("/login");
+      return;
+    }
+
+    const user = JSON.parse(userData);
+    console.log("👤 User data:", user); // debug xem roles & permissions thực tế
+
+    // ✅ Chuẩn hóa roles
+    const roles = (user.roles || []).map((r: any) => r.name || r);
+    const permissions = user.permissions || [];
+
+    // ✅ Kiểm tra quyền truy cập admin
+    const canAccess =
+      roles.includes("Super Admin") ||
+      roles.includes("Moderator") ||
+      permissions.includes("access-admin");
+
+    if (!canAccess) {
+      console.warn("⛔ Không có quyền truy cập admin:", roles, permissions);
       router.replace("/home");
+    } else {
+      if (user.name) setUserName(user.name);
     }
   }, [router]);
 
+  // 🚪 Đăng xuất
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
@@ -84,7 +117,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         theme === "light" ? "bg-gray-100" : "bg-gray-900 text-gray-100"
       }`}
     >
-      {/* Sidebar (with smooth slide-in animation) */}
+      {/* Sidebar (mobile) */}
       <AnimatePresence>
         {isSidebarOpen && !isDesktop && (
           <>
@@ -103,7 +136,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               />
             </motion.div>
 
-            {/* Overlay khi mở sidebar trên mobile */}
             <motion.div
               className="fixed inset-0 bg-black/40 z-30 backdrop-blur-sm"
               initial={{ opacity: 0 }}
@@ -115,7 +147,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         )}
       </AnimatePresence>
 
-      {/* Desktop Sidebar */}
+      {/* Sidebar (desktop) */}
       {isDesktop && (
         <Sidebar
           isCollapsed={isCollapsed}
@@ -125,7 +157,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         />
       )}
 
-      {/* Main Content */}
+      {/* Main layout */}
       <div
         className={`flex-1 flex flex-col transition-all duration-300 ${
           isDesktop
@@ -146,7 +178,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               : "border-gray-700"
           }`}
         >
-          {/* Mobile toggle */}
+          {/* Toggle mobile sidebar */}
           <button
             onClick={() => setIsSidebarOpen(true)}
             className="lg:hidden bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700 transition"
@@ -154,7 +186,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <Menu size={22} />
           </button>
 
-          {/* Collapse desktop */}
+          {/* Collapse desktop sidebar */}
           <button
             onClick={() => setIsCollapsed((s) => !s)}
             className="hidden lg:inline-flex items-center justify-center bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700 transition"
@@ -181,7 +213,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
           {/* Actions */}
           <div className="flex items-center gap-4 relative">
-            {/* Notification */}
+            {/* Notifications */}
             <div ref={notiRef} className="relative">
               <button
                 onClick={() => {
@@ -227,7 +259,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               </AnimatePresence>
             </div>
 
-            {/* Theme toggle */}
+            {/* Theme switch */}
             <button
               onClick={toggleTheme}
               className="p-2 rounded-full hover:bg-blue-50 dark:hover:bg-gray-700 transition"
@@ -291,7 +323,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
         </motion.header>
 
-        {/* Main */}
+        {/* Main content */}
         <main className="flex-1 p-4 lg:p-8">{children}</main>
       </div>
     </div>

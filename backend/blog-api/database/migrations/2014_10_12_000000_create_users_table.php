@@ -21,6 +21,7 @@ return new class extends Migration
         $table->timestamp('otp_expires_at')->nullable();
         $table->timestamp('otp_sent_at')->nullable();
         $table->boolean('is_verified')->default(false);
+        $table->json('blocked_permissions')->nullable();
         $table->rememberToken();
         $table->timestamps();
     });
