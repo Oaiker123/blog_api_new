@@ -32,11 +32,7 @@ export default function Sidebar({
     router.push("/login");
   };
 
-  const navItem = (
-    icon: React.ReactNode,
-    label: string,
-    path: string
-  ) => {
+  const navItem = (icon: React.ReactNode, label: string, path: string) => {
     const active = pathname === path;
 
     return (
@@ -47,9 +43,10 @@ export default function Sidebar({
         }}
         className={`
           group flex items-center gap-3 text-left p-2 rounded-xl transition-all
-          ${active
-            ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-md"
-            : "hover:bg-white/10 hover:shadow-sm text-gray-100"
+          ${
+            active
+              ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-md"
+              : "hover:bg-white/10 hover:shadow-sm text-gray-100"
           }
         `}
       >
@@ -61,9 +58,7 @@ export default function Sidebar({
           {icon}
         </div>
         {!isCollapsed && (
-          <span className="truncate font-medium tracking-wide">
-            {label}
-          </span>
+          <span className="truncate font-medium tracking-wide">{label}</span>
         )}
       </button>
     );
@@ -136,10 +131,26 @@ export default function Sidebar({
           transition={{ delay: 0.2 }}
           className="flex-1 flex flex-col gap-2 p-3 overflow-y-auto"
         >
-          {navItem(<LayoutDashboard size={18} />, "Dashboard", "/admin/dashboard")}
+          {navItem(
+            <LayoutDashboard size={18} />,
+            "Dashboard",
+            "/admin/dashboard"
+          )}
           {navItem(<Newspaper size={18} />, "Duyệt bài viết", "/admin/posts")}
-          {role === "Super Admin" &&
-            navItem(<Users size={18} />, "Quản lý người dùng", "/admin/permissions")}
+          {role === "Super Admin" && (
+            <>
+              {navItem(
+                <Users size={18} />,
+                "Quản lý người dùng",
+                "/admin/users"
+              )}
+              {navItem(
+                <Users size={18} />,
+                "Quản lý Quyền người dùng",
+                "/admin/permissions"
+              )}
+            </>
+          )}
         </motion.nav>
 
         {/* Logout */}

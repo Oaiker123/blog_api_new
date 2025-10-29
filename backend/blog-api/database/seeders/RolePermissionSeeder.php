@@ -33,42 +33,27 @@ class RolePermissionSeeder extends Seeder
             'edit any profile',
         ];
 
-        // ✅ Tạo các quyền nếu chưa có
+        // ✅ Tạo quyền nếu chưa có
         foreach ($permissions as $perm) {
             Permission::firstOrCreate(['name' => $perm, 'guard_name' => 'web']);
         }
 
-        // ✅ Tạo các vai trò (roles)
+        // ✅ Tạo roles
         $superAdmin = Role::firstOrCreate(['name' => 'Super Admin']);
+        $admin      = Role::firstOrCreate(['name' => 'Admin']);
         $moderator  = Role::firstOrCreate(['name' => 'Moderator']);
         $author     = Role::firstOrCreate(['name' => 'Author']);
         $member     = Role::firstOrCreate(['name' => 'Member']);
 
-        // ✅ Gán quyền cho từng vai trò
-        // Super Admin: tất cả quyền
+        // ✅ Super Admin có tất cả quyền
         $superAdmin->syncPermissions(Permission::all());
 
-        // Moderator: có thể vào admin + duyệt / sửa bài
-        $moderator->syncPermissions([
-            'access-admin',
-            'approve posts',
-            'edit posts',
-            'edit own profile',
-        ]);
-
-        // Author: có thể vào admin + tạo/sửa/xóa bài + sửa hồ sơ riêng
-        $author->syncPermissions([
-            'access-admin',
-            'create posts',
-            'edit posts',
-            'delete posts',
-            'edit own profile',
-        ]);
-
-        // Member: chỉ sửa hồ sơ riêng, không vào admin
-        $member->syncPermissions([
-            'edit own profile',
-        ]);
+        // ✅ Các role khác chỉ có quyền chỉnh hồ sơ cá nhân (chưa có user gán)
+        $onlyProfile = ['edit own profile'];
+        $admin->syncPermissions($onlyProfile);
+        $moderator->syncPermissions($onlyProfile);
+        $author->syncPermissions($onlyProfile);
+        $member->syncPermissions($onlyProfile);
 
         $this->command->info('✅ Roles & Permissions seeded successfully!');
     }

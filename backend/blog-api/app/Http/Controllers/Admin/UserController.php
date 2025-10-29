@@ -9,17 +9,19 @@ use Spatie\Permission\Models\Permission;
 
 class UserController extends Controller
 {
+    // 📋 Danh sách người dùng
     public function index()
     {
-        $users = User::with(['roles', 'permissions'])->get();
+        // ✅ Phân trang 10 người dùng mỗi trang
+        $users = User::with(['roles', 'permissions'])->paginate(3);
 
-        $data = $users->map(function ($user) {
+        // ✅ Duyệt qua từng user trong trang hiện tại
+        $data = collect($users->items())->map(function ($user) {
             return [
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
                 'roles' => $user->roles->pluck('name'),
-                // 🔥 Lấy đủ quyền của user
                 'permissions' => $user->getAllPermissions()->map(function ($perm) {
                     return [
                         'id' => $perm->id,
@@ -31,7 +33,12 @@ class UserController extends Controller
 
         return response()->json([
             'message' => 'Danh sách người dùng',
-            'users' => $data
+            'users' => $data,
+            'meta' => [
+                'current_page' => $users->currentPage(),
+                'last_page' => $users->lastPage(),
+                'total' => $users->total(),
+            ],
         ]);
     }
 
@@ -54,54 +61,82 @@ class UserController extends Controller
     }
 
 
-    // 🔁 Cập nhật role người dùng
+    // 🔁 Cập nhật role của user
     public function updateRole(Request $request, $id)
     {
         try {
-            // 1️⃣ Chỉ Super Admin được phép đổi role
             $currentUser = auth()->user();
+
+            // 🛡️ Chỉ Super Admin được phép đổi role
             if (!$currentUser->hasRole('Super Admin')) {
                 return response()->json([
-                    'message' => 'Ban khong co quyen thuc hien hanh dong nay'
+                    'message' => 'Bạn không có quyền thực hiện hành động này.'
                 ], 403);
             }
 
-            // 2️⃣ Validate role hợp lệ
+            // 🧾 Validate role hợp lệ
             $validated = $request->validate([
-                'role' => 'required|string|exists:roles,name'
+                'role' => 'required|string|exists:roles,name',
             ]);
 
-            // 3️⃣ Tìm user cần cập nhật
-            $user = User::find($id);
-            if (!$user) {
+            // 🔍 Tìm user cần đổi role
+            $user = User::findOrFail($id);
+
+            // ❌ Chặn đổi role cho chính mình
+            if ($user->id === $currentUser->id) {
                 return response()->json([
-                    'message' => 'Nguoi dung khong ton tai'
-                ], 404);
+                    'message' => 'Không thể thay đổi role của chính bạn để tránh mất quyền truy cập admin.'
+                ], 403);
             }
 
-            // 4️⃣ Cập nhật role
+            // ❌ Chặn đổi role của Super Admin mặc định
+            if ($user->email === 'admin@gmail.com') {
+                return response()->json([
+                    'message' => 'Không thể thay đổi role của Super Admin mặc định.'
+                ], 403);
+            }
+
+            // 🔁 Gán role mới
             $user->syncRoles([$validated['role']]);
 
+            // ⚙️ Gán quyền mặc định cho role đó
+            $defaultPermissions = [
+                'Super Admin' => Permission::all()->pluck('name')->toArray(),
+                'Admin'       => ['access-admin', 'edit own profile'],
+                'Moderator'   => ['edit own profile'],
+                'Author'      => ['edit own profile'],
+                'Member'      => ['edit own profile'],
+            ];
+
+            $roleName = $validated['role'];
+            $permissionsToAssign = $defaultPermissions[$roleName] ?? ['edit own profile'];
+
+            $user->syncPermissions($permissionsToAssign);
+
             return response()->json([
-                'message' => 'Cap nhat role thanh cong',
-                'user' => $user->load('roles')
+                'message' => "Cập nhật role thành công thành '{$roleName}'.",
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'roles' => $user->getRoleNames(),
+                    'permissions' => $user->getAllPermissions()->pluck('name'),
+                ],
             ], 200);
 
         } catch (\Illuminate\Validation\ValidationException $e) {
-            // 5️⃣ Role không hợp lệ
             return response()->json([
-                'message' => 'Du lieu khong hop le',
-                'errors' => $e->errors()
+                'message' => 'Dữ liệu không hợp lệ.',
+                'errors' => $e->errors(),
             ], 422);
-
         } catch (\Exception $e) {
-            // 6️⃣ Lỗi không mong đợi khác
             return response()->json([
-                'message' => 'Co loi xay ra khi cap nhat role',
-                'error' => $e->getMessage()
+                'message' => 'Đã xảy ra lỗi khi cập nhật role.',
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
+
 
 
     // ❌ Xóa user
@@ -129,11 +164,18 @@ class UserController extends Controller
         // Nếu frontend gửi mảng => bulk update
         if ($request->has('permissions') && is_array($request->permissions)) {
             $request->validate([
-                'permissions' => 'required|array',
+                'permissions' => 'nullable|array',
                 'permissions.*' => 'string|exists:permissions,name',
             ]);
 
-            $user->syncPermissions($request->permissions);
+            // 🔹 Nếu mảng trống -> tự động gán quyền mặc định
+            $permissions = $request->permissions;
+            if (empty($permissions)) {
+                $permissions = ['edit own profile'];
+            }
+
+            $user->syncPermissions($permissions);
+
             return response()->json([
                 'message' => 'Cập nhật quyền hàng loạt thành công',
                 'user' => $user->load('permissions'),
@@ -156,6 +198,7 @@ class UserController extends Controller
             'user' => $user->load('permissions'),
         ]);
     }
+
 
 
     // 📌 Gỡ quyền của user (chỉ Super Admin được phép)
@@ -188,12 +231,24 @@ class UserController extends Controller
             }
 
 
+
             // 4️⃣ Gỡ từng quyền
             foreach ($request->permissions as $perm) {
                 if ($user->hasPermissionTo($perm)) {
-                    $user->revokePermissionTo($perm);
+                    // Nếu quyền đến từ role -> gỡ khỏi role trước
+                    foreach ($user->roles as $role) {
+                        if ($role->hasPermissionTo($perm)) {
+                            $role->revokePermissionTo($perm);
+                        }
+                    }
+
+                    // Sau đó mới gỡ trực tiếp khỏi user (nếu có)
+                    if ($user->hasDirectPermission($perm)) {
+                        $user->revokePermissionTo($perm);
+                    }
                 }
             }
+
 
             return response()->json([
                 'message' => 'Thu hồi quyền thành công',

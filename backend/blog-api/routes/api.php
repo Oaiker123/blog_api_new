@@ -59,13 +59,6 @@ Route::middleware(['auth:sanctum', 'permission:access-admin'])->prefix('admin')-
     Route::put('/profiles/{id}', [ProfileController::class, 'update']);
 });
 
-// Route::middleware(['auth:sanctum'])->prefix('admin')->group(function () {
-//     Route::get('/users', [UserController::class, 'index']);
-//     Route::get('/users/{id}', [UserController::class, 'show']);
-//     Route::put('/users/{id}/role', [UserController::class, 'updateRole']); // bỏ middleware Super Admin để test các lỗi
-//     Route::delete('/users/{id}', [UserController::class, 'destroy']);
-// });
-
 // -----------------------------------
 // 👤 PROFILE ROUTES (cho người dùng thường)
 // -----------------------------------
@@ -100,6 +93,17 @@ Route::prefix('posts')->middleware('auth:sanctum')->group(function () {
     Route::put('/{id}/approve', [PostController::class, 'approve'])->middleware('permission:approve posts');
 });
 
+// Thêm route để lấy thông tin user hiện tại (cho frontend)
+Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
+    $user = $request->user();
+    return response()->json([
+        'id' => $user->id,
+        'name' => $user->name,
+        'email' => $user->email,
+        'roles' => $user->getRoleNames(),
+        'permissions' => $user->getAllPermissions()->pluck('name')
+    ]);
+});
 
 Route::get('/test', function () {
     return response()->json(['message' => 'Hello from Laravel!']);

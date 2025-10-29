@@ -77,24 +77,24 @@ export default function AdminLayout({
     const token = localStorage.getItem("token");
     const userData = localStorage.getItem("user");
 
-    // ❌ Nếu chưa đăng nhập → quay lại login
     if (!token || !userData) {
       router.replace("/login");
       return;
     }
 
     const user = JSON.parse(userData);
-    console.log("👤 User data:", user); // debug xem roles & permissions thực tế
+    console.log("👤 User data:", user);
 
-    // ✅ Chuẩn hóa roles
+    // ✅ Chuẩn hóa roles & permissions
     const roles = (user.roles || []).map((r: any) => r.name || r);
-    const permissions = user.permissions || [];
+    const permissions = (user.permissions || []).map((p: any) => p.name || p);
 
-    // ✅ Kiểm tra quyền truy cập admin
+    // ✅ Chỉ Super Admin hoặc có access-admin mới vào được
     const canAccess =
-      roles.includes("Super Admin") ||
-      roles.includes("Moderator") ||
-      permissions.includes("access-admin");
+      roles.includes("Super Admin") || permissions.includes("access-admin");
+
+    console.log("🧩 Roles:", roles);
+    console.log("🧩 Permissions:", permissions);
 
     if (!canAccess) {
       console.warn("⛔ Không có quyền truy cập admin:", roles, permissions);

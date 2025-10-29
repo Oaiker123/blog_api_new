@@ -3,19 +3,18 @@
 namespace Database\Seeders;
 
 use App\Models\User;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
 class SuperAdminSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
-        // Super Admin
-        $admin = User::firstOrCreate(
+        // 🔄 Xóa toàn bộ user khác (đảm bảo dữ liệu sạch)
+        User::where('email', '!=', 'admin@gmail.com')->delete();
+
+        // ✅ Tạo Super Admin duy nhất
+        $admin = User::updateOrCreate(
             ['email' => 'admin@gmail.com'],
             [
                 'name' => 'Super Admin',
@@ -24,42 +23,12 @@ class SuperAdminSeeder extends Seeder
                 'email_verified_at' => now(),
             ]
         );
-        $admin->assignRole('Super Admin');
 
-        // Author
-        $author = User::firstOrCreate(
-            ['email' => 'author@example.com'],
-            [
-                'name' => 'Author User',
-                'password' => Hash::make('Password@123'),
-                'is_verified' => true,
-                'email_verified_at' => now(),
-            ]
-        );
-        $author->assignRole('Author');
+        // ✅ Gán role Super Admin (nếu chưa có)
+        if (!$admin->hasRole('Super Admin')) {
+            $admin->assignRole('Super Admin');
+        }
 
-        // Moderator
-        $moderator = User::firstOrCreate(
-            ['email' => 'moderator@example.com'],
-            [
-                'name' => 'Moderator User',
-                'password' => Hash::make('Password@123'),
-                'is_verified' => true,
-                'email_verified_at' => now(),
-            ]
-        );
-        $moderator->assignRole('Moderator');
-
-        // Member
-        $member = User::firstOrCreate(
-            ['email' => 'member@example.com'],
-            [
-                'name' => 'Member User',
-                'password' => Hash::make('Password@123'),
-                'is_verified' => true,
-                'email_verified_at' => now(),
-            ]
-        );
-        $member->assignRole('Member');
+        $this->command->info('✅ Super Admin user created: admin@gmail.com / Admin@123');
     }
 }
