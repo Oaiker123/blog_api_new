@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
+use Spatie\Permission\PermissionRegistrar;
 
 class AuthController extends Controller
 {
@@ -264,6 +265,9 @@ class AuthController extends Controller
     public function me(Request $request)
     {
         $user = $request->user()->load('roles', 'permissions');
+
+// ✅ Xóa cache quyền để luôn cập nhật real-time
+        app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
         return response()->json([
             'message' => 'Lay thong tin nguoi dung thanh cong',

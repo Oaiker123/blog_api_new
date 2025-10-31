@@ -44,8 +44,7 @@ Route::prefix('auth')->group(function () {
 // -----------------------------------
 // 🧑‍💼 ADMIN ROUTES (chỉ Super Admin được quyền)
 // -----------------------------------
-Route::middleware(['auth:sanctum', 'permission:access-admin'])->prefix('admin')->group(function () {    Route::get('/users', [UserController::class, 'index']);             // Xem danh sách user
-    Route::get('/users/{id}', [UserController::class, 'show']);         // Xem chi tiết user
+Route::middleware(['auth:sanctum', 'permission:access-admin'])->prefix('admin')->group(function () {
     Route::put('/users/{id}/role', [UserController::class, 'updateRole']); // Đổi role user
     Route::delete('/users/{id}', [UserController::class, 'destroy']);   // Xóa user
 
@@ -53,11 +52,19 @@ Route::middleware(['auth:sanctum', 'permission:access-admin'])->prefix('admin')-
     Route::get('/permissions', [UserController::class, 'allPermissions']);
 
     // 👇 THAY THẾ hai route cũ bằng route PUT/PATCH duy nhất cho cập nhật nhiều quyền
-    Route::put('/users/{id}/permissions', [UserController::class, 'updatePermissions']);
+    Route::post('/users/{id}/permissions', [UserController::class, 'givePermission']);
 
     // 👤 Super Admin chỉnh sửa profile của người khác
     Route::put('/profiles/{id}', [ProfileController::class, 'update']);
 });
+
+// 👀 Route chỉ cần quyền view users
+Route::middleware(['auth:sanctum', 'permission:view users'])
+    ->prefix('admin')
+    ->group(function () {
+        Route::get('/users', [UserController::class, 'index']);
+        Route::get('/users/{id}', [UserController::class, 'show']);
+    });
 
 // -----------------------------------
 // 👤 PROFILE ROUTES (cho người dùng thường)

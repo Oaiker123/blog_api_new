@@ -48,16 +48,20 @@ export default function UserList() {
     fetchCurrentUser();
   }, []);
 
-  // 🧩 Lấy danh sách users (có phân trang)
+  // 🧩 Lấy danh sách users
   const fetchUsers = async (pageNum = 1) => {
     try {
       setLoading(true);
       const res = await api.get(`/admin/users?page=${pageNum}`);
       setUsers(res.data.users || []);
       setMeta(res.data.meta || null);
-    } catch (err) {
-      console.error("Lỗi khi lấy users:", err);
-      toast.error("Không thể tải danh sách người dùng!");
+    } catch (err: any) {
+      console.error("Lỗi khi lấy users:", err.response?.data || err.message);
+      if (err.response?.status === 403) {
+        toast.error(err.response?.data?.message || "Bạn không có quyền xem danh sách người dùng!");
+      } else {
+        toast.error("Không thể tải danh sách người dùng!");
+      }
     } finally {
       setLoading(false);
     }
@@ -71,7 +75,6 @@ export default function UserList() {
   const handleChangeRole = async (userId: number, newRole: string) => {
     if (!newRole) return;
 
-    // 🚫 Không cho đổi role của chính mình (Super Admin)
     if (currentUser && currentUser.id === userId) {
       toast.warning("Bạn không thể thay đổi role của chính mình!");
       return;
@@ -81,7 +84,7 @@ export default function UserList() {
       setLoadingId(userId);
       const res = await api.put(`/admin/users/${userId}/role`, { role: newRole });
       toast.success(res.data.message || "Cập nhật role thành công!");
-      await fetchUsers(page); // 🔄 tự động refetch lại list
+      await fetchUsers(page);
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Có lỗi xảy ra khi đổi role.");
     } finally {
@@ -89,7 +92,6 @@ export default function UserList() {
     }
   };
 
-  // 🧩 Tải lại danh sách thủ công
   const handleRefresh = async () => {
     setRefreshing(true);
     await Promise.all([fetchUsers(page), fetchCurrentUser()]);
@@ -98,16 +100,15 @@ export default function UserList() {
   };
 
   const isSuperAdmin = currentUser?.role?.includes("Super Admin") ?? false;
+  const canUpdateRole = isSuperAdmin || currentUser?.permissions?.includes("update roles");
 
   if (loading)
     return <div className="p-4">Đang tải danh sách người dùng...</div>;
 
   return (
     <div className="p-4">
-      {/* Header */}
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-xl font-semibold">Quản lý người dùng</h1>
-
         <button
           onClick={handleRefresh}
           className={`flex items-center gap-2 border px-3 py-1 rounded-lg text-sm transition ${
@@ -119,26 +120,19 @@ export default function UserList() {
         </button>
       </div>
 
-      {/* Current User Info */}
-      {currentUser ? (
+      {currentUser && (
         <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded mb-4">
           <strong>User hiện tại:</strong> {currentUser.name} ({currentUser.email}) —{" "}
           <span>{(currentUser.role || []).join(", ") || "NO ROLES"}</span>
         </div>
-      ) : (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
-          <strong>Chưa đăng nhập:</strong> Không thể lấy thông tin user
-        </div>
       )}
 
-      {/* Cảnh báo nếu không phải Super Admin */}
-      {!isSuperAdmin && (
+      {!canUpdateRole && (
         <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-4">
           <strong>Chú ý:</strong> Bạn không có quyền thay đổi role.
         </div>
       )}
 
-      {/* Bảng người dùng */}
       <table className="min-w-full border rounded-lg">
         <thead className="bg-gray-100">
           <tr>
@@ -146,15 +140,12 @@ export default function UserList() {
             <th className="p-2 text-left">Tên</th>
             <th className="p-2 text-left">Email</th>
             <th className="p-2 text-left">Vai trò</th>
-            {isSuperAdmin && <th className="p-2 text-left">Thay đổi Role</th>}
+            {canUpdateRole && <th className="p-2 text-left">Thay đổi Role</th>}
           </tr>
         </thead>
         <tbody>
           {users.map((u) => {
-            const isSelf =
-              currentUser?.id === u.id &&
-              currentUser?.role?.includes("Super Admin");
-
+            const isSelf = currentUser?.id === u.id;
             return (
               <tr key={u.id} className="border-t hover:bg-gray-50 transition">
                 <td className="p-2">{u.id}</td>
@@ -162,7 +153,7 @@ export default function UserList() {
                 <td className="p-2">{u.email}</td>
                 <td className="p-2">{(u.roles || []).join(", ") || "Chưa có role"}</td>
 
-                {isSuperAdmin && (
+                {canUpdateRole && (
                   <td className="p-2">
                     <select
                       className={`border rounded px-2 py-1 ${
@@ -171,11 +162,6 @@ export default function UserList() {
                       onChange={(e) => handleChangeRole(u.id, e.target.value)}
                       defaultValue=""
                       disabled={loadingId === u.id || isSelf}
-                      title={
-                        isSelf
-                          ? "Không thể đổi role của chính bạn"
-                          : "Chọn role để thay đổi"
-                      }
                     >
                       <option value="">— Chọn role —</option>
                       <option value="Super Admin">Super Admin</option>
@@ -197,7 +183,6 @@ export default function UserList() {
         </tbody>
       </table>
 
-      {/* Phân trang */}
       {meta && (
         <div className="flex justify-between items-center mt-4">
           <button
@@ -207,11 +192,9 @@ export default function UserList() {
           >
             ← Trước
           </button>
-
           <span>
             Trang {meta.current_page} / {meta.last_page} — Tổng: {meta.total}
           </span>
-
           <button
             className="border px-3 py-1 rounded disabled:opacity-50"
             onClick={() => setPage((p) => Math.min(meta.last_page, p + 1))}
@@ -219,12 +202,6 @@ export default function UserList() {
           >
             Sau →
           </button>
-        </div>
-      )}
-
-      {users.length === 0 && !loading && (
-        <div className="text-center py-8 text-gray-500">
-          Không có người dùng nào
         </div>
       )}
     </div>

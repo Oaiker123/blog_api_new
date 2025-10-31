@@ -11,7 +11,7 @@ import { toast } from "sonner";
 // 🧠 Mã hóa & Giải mã mật khẩu (base64)
 const encrypt = (text: string) => {
   try {
-    return btoa(text); // encode
+    return btoa(text);
   } catch {
     return text;
   }
@@ -19,7 +19,7 @@ const encrypt = (text: string) => {
 
 const decrypt = (text: string) => {
   try {
-    return atob(text); // decode
+    return atob(text);
   } catch {
     return text;
   }
@@ -33,7 +33,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
 
-  // 🧩 Lấy lại dữ liệu đã lưu (email, password, rememberMe)
+  // 🧩 Lấy dữ liệu Remember Me
   useEffect(() => {
     const savedEmail = localStorage.getItem("loginEmail");
     const savedPassword = localStorage.getItem("loginPassword");
@@ -44,7 +44,6 @@ export default function LoginPage() {
     setRememberMe(savedRemember);
   }, []);
 
-  // 💾 Lưu email & password mỗi khi người dùng nhập
   useEffect(() => {
     localStorage.setItem("loginEmail", email);
   }, [email]);
@@ -53,7 +52,7 @@ export default function LoginPage() {
     localStorage.setItem("loginPassword", encrypt(password));
   }, [password]);
 
-  // ✅ Xử lý đăng nhập
+  // ✅ Đăng nhập thủ công
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -90,7 +89,6 @@ export default function LoginPage() {
             localStorage.removeItem("rememberMe");
           }
 
-          // 🔥 Kiểm tra quyền hoặc role
           const roleNames = data.user?.roles?.map((r: any) => r.name || r) || [];
           const permissionNames = data.user?.permissions || [];
 
@@ -98,12 +96,7 @@ export default function LoginPage() {
             roleNames.includes("Super Admin") ||
             permissionNames.includes("access-admin");
 
-          if (canAccessAdmin) {
-            router.push("/admin/dashboard");
-          } else {
-            router.push("/home");
-          }
-
+          router.push(canAccessAdmin ? "/admin/dashboard" : "/home");
           return data.message || "✅ Đăng nhập thành công!";
         },
         error: (err) => {
@@ -125,7 +118,7 @@ export default function LoginPage() {
               );
             }, 1200);
 
-            return "⚠️ Tài khoản chưa xác minh email. Đang chuyển sang trang OTP...";
+            return "⚠️ Tài khoản chưa xác minh email. Đang chuyển sang OTP...";
           }
 
           if (status === 401) return "❌ Mật khẩu không chính xác!";
@@ -141,6 +134,35 @@ export default function LoginPage() {
     toast.loading(`🔄 Đang chuyển hướng đến ${provider}...`);
     window.location.href = `http://localhost:8000/api/auth/${provider}/redirect`;
   };
+
+  // ⚡️ Xử lý redirect sau khi đăng nhập Google/Facebook thành công
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get("token");
+    const user = urlParams.get("user");
+
+    if (token && user) {
+      try {
+        localStorage.setItem("token", token);
+        localStorage.setItem("user", user);
+        toast.success("🎉 Đăng nhập thành công!");
+
+        const parsedUser = JSON.parse(user);
+        const roleNames = parsedUser?.roles?.map((r: any) => r.name || r) || [];
+        const permissionNames = parsedUser?.permissions || [];
+
+        const canAccessAdmin =
+          roleNames.includes("Super Admin") ||
+          permissionNames.includes("access-admin");
+
+        router.push(canAccessAdmin ? "/admin/dashboard" : "/home");
+      } catch (e) {
+        console.error("❌ Lỗi parse user:", e);
+        toast.error("Dữ liệu đăng nhập không hợp lệ!");
+        router.push("/login");
+      }
+    }
+  }, [router]);
 
   return (
     <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow-lg">
@@ -186,7 +208,6 @@ export default function LoginPage() {
           </button>
         </div>
 
-        {/* ✅ Checkbox Remember Me */}
         <div className="flex items-center justify-between text-sm mt-2">
           <label className="flex items-center gap-2">
             <input
@@ -225,12 +246,12 @@ export default function LoginPage() {
         >
           <FaGoogle className="mr-2 text-red-500" /> Đăng nhập với Google
         </button>
-        <button
+        {/* <button
           onClick={() => handleSocialLogin("facebook")}
           className="flex items-center justify-center w-full border py-2 rounded hover:bg-gray-100 transition"
         >
           <FaFacebookF className="mr-2 text-blue-600" /> Đăng nhập với Facebook
-        </button>
+        </button> */}
       </div>
     </div>
   );

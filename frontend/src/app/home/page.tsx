@@ -19,6 +19,21 @@ export default function HomePage() {
 
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
 
+  // ✅ Thêm đoạn này: Cập nhật user mới nhất khi reload trang
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    api
+      .get("/auth/me", { headers: { Authorization: `Bearer ${token}` } })
+      .then((res) => {
+        localStorage.setItem("user", JSON.stringify(res.data.user));
+      })
+      .catch((err) => {
+        console.error("Không thể load user:", err);
+      });
+  }, []);
+
   // 🎢 Theo dõi vị trí cuộn để tạo hiệu ứng parallax
   useEffect(() => {
     const handleScroll = () => setScrollY(window.scrollY);

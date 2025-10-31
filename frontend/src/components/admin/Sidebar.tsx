@@ -3,7 +3,7 @@
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Users, Newspaper, LayoutDashboard, LogOut } from "lucide-react";
+import { Users, Newspaper, LayoutDashboard, LogOut, Shield } from "lucide-react";
 
 export default function Sidebar({
   isCollapsed,
@@ -19,11 +19,14 @@ export default function Sidebar({
   const router = useRouter();
   const pathname = usePathname();
   const [role, setRole] = useState<string>("");
+  const [permissions, setPermissions] = useState<string[]>([]); // ✅ thêm state permissions
 
   useEffect(() => {
+    // 🔹 Lấy user từ localStorage
     const user = JSON.parse(localStorage.getItem("user") || "{}");
     const roles = user.roles || [];
-    setRole(roles[0]);
+    setRole(roles[0] || "");
+    setPermissions(user.permissions || []); // ✅ lấy thêm quyền
   }, []);
 
   const handleLogout = () => {
@@ -131,26 +134,16 @@ export default function Sidebar({
           transition={{ delay: 0.2 }}
           className="flex-1 flex flex-col gap-2 p-3 overflow-y-auto"
         >
-          {navItem(
-            <LayoutDashboard size={18} />,
-            "Dashboard",
-            "/admin/dashboard"
-          )}
+          {navItem(<LayoutDashboard size={18} />, "Dashboard", "/admin/dashboard")}
           {navItem(<Newspaper size={18} />, "Duyệt bài viết", "/admin/posts")}
-          {role === "Super Admin" && (
-            <>
-              {navItem(
-                <Users size={18} />,
-                "Quản lý người dùng",
-                "/admin/users"
-              )}
-              {navItem(
-                <Users size={18} />,
-                "Quản lý Quyền người dùng",
-                "/admin/permissions"
-              )}
-            </>
-          )}
+
+          {/* ✅ Super Admin hoặc ai có quyền 'view users' đều thấy */}
+          {(role === "Super Admin" || permissions?.includes("view users")) &&
+            navItem(<Users size={18} />, "Quản lý người dùng", "/admin/users")}
+
+          {/* ✅ Chỉ Super Admin mới thấy mục quyền */}
+          {role === "Super Admin" &&
+            navItem(<Shield size={18} />, "Quản lý Quyền người dùng", "/admin/permissions")}
         </motion.nav>
 
         {/* Logout */}

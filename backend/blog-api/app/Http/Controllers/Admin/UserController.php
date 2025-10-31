@@ -12,10 +12,16 @@ class UserController extends Controller
     // 📋 Danh sách người dùng
     public function index()
     {
-        // ✅ Phân trang 10 người dùng mỗi trang
+        $user = auth()->user();
+
+        if (!$user->hasRole('Super Admin') && !$user->can('view users')) {
+            return response()->json([
+                'message' => 'Bạn không có quyền xem danh sách người dùng.'
+            ], 403);
+        }
+
         $users = User::with(['roles', 'permissions'])->paginate(3);
 
-        // ✅ Duyệt qua từng user trong trang hiện tại
         $data = collect($users->items())->map(function ($user) {
             return [
                 'id' => $user->id,
@@ -48,18 +54,17 @@ class UserController extends Controller
         $user = User::with('roles')->findOrFail($id);
 
         return response()->json([
-            'message' => 'Chi tiet nguoi dung',
+            'message' => 'Chi tiết người dùng',
             'user' => $user
         ]);
     }
 
-    // 📄 Danh sách tất cả permissions để hiển thị cột
+    // 📄 Danh sách tất cả permissions
     public function allPermissions()
     {
         $permissions = Permission::all();
         return response()->json($permissions);
     }
-
 
     // 🔁 Cập nhật role của user
     public function updateRole(Request $request, $id)
@@ -96,6 +101,9 @@ class UserController extends Controller
                 ], 403);
             }
 
+            // 🧩 Giữ lại các quyền direct cũ trước khi đổi role
+            $oldDirectPermissions = $user->getDirectPermissions()->pluck('name')->toArray();
+
             // 🔁 Gán role mới
             $user->syncRoles([$validated['role']]);
 
@@ -109,12 +117,19 @@ class UserController extends Controller
             ];
 
             $roleName = $validated['role'];
-            $permissionsToAssign = $defaultPermissions[$roleName] ?? ['edit own profile'];
+            $roleDefaultPermissions = $defaultPermissions[$roleName] ?? ['edit own profile'];
 
-            $user->syncPermissions($permissionsToAssign);
+            // 🧠 Hợp nhất quyền default + quyền direct cũ
+            $finalPermissions = array_unique(array_merge($roleDefaultPermissions, $oldDirectPermissions));
+
+            // 🧱 Gán lại quyền tổng hợp
+            $user->syncPermissions($finalPermissions);
+
+            // 🔄 Xóa cache quyền để hiệu lực ngay
+            app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
 
             return response()->json([
-                'message' => "Cập nhật role thành công thành '{$roleName}'.",
+                'message' => "✅ Cập nhật role thành công: {$roleName}",
                 'user' => [
                     'id' => $user->id,
                     'name' => $user->name,
@@ -137,15 +152,13 @@ class UserController extends Controller
         }
     }
 
-
-
     // ❌ Xóa user
     public function destroy($id)
     {
         $user = User::findOrFail($id);
         $user->delete();
 
-        return response()->json(['message' => 'da xoa nguoi dung thanh cong']);
+        return response()->json(['message' => 'Đã xóa người dùng thành công']);
     }
 
     public function givePermission(Request $request, $id)
@@ -161,14 +174,12 @@ class UserController extends Controller
             return response()->json(['message' => 'Không thể chỉnh sửa Super Admin'], 403);
         }
 
-        // Nếu frontend gửi mảng => bulk update
         if ($request->has('permissions') && is_array($request->permissions)) {
             $request->validate([
                 'permissions' => 'nullable|array',
                 'permissions.*' => 'string|exists:permissions,name',
             ]);
 
-            // 🔹 Nếu mảng trống -> tự động gán quyền mặc định
             $permissions = $request->permissions;
             if (empty($permissions)) {
                 $permissions = ['edit own profile'];
@@ -182,7 +193,6 @@ class UserController extends Controller
             ]);
         }
 
-        // Ngược lại, nếu chỉ gán 1 quyền
         $request->validate([
             'permission' => 'required|string|exists:permissions,name',
         ]);
@@ -199,13 +209,9 @@ class UserController extends Controller
         ]);
     }
 
-
-
-    // 📌 Gỡ quyền của user (chỉ Super Admin được phép)
     public function revokePermission(Request $request, $id)
     {
         try {
-            // 1️⃣ Kiểm tra quyền Super Admin
             $currentUser = auth()->user();
             if (!$currentUser->hasRole('Super Admin')) {
                 return response()->json([
@@ -213,13 +219,11 @@ class UserController extends Controller
                 ], 403);
             }
 
-            // 2️⃣ Validate input
             $request->validate([
                 'permissions' => 'required|array',
                 'permissions.*' => 'string|exists:permissions,name',
             ]);
 
-            // 3️⃣ Tìm user
             $user = User::findOrFail($id);
 
             if ($user->hasRole('Super Admin')) {
@@ -230,25 +234,21 @@ class UserController extends Controller
                 return response()->json(['message' => 'Không thể tự gỡ quyền của chính mình'], 403);
             }
 
-
-
-            // 4️⃣ Gỡ từng quyền
             foreach ($request->permissions as $perm) {
                 if ($user->hasPermissionTo($perm)) {
-                    // Nếu quyền đến từ role -> gỡ khỏi role trước
                     foreach ($user->roles as $role) {
                         if ($role->hasPermissionTo($perm)) {
                             $role->revokePermissionTo($perm);
                         }
                     }
 
-                    // Sau đó mới gỡ trực tiếp khỏi user (nếu có)
                     if ($user->hasDirectPermission($perm)) {
                         $user->revokePermissionTo($perm);
                     }
                 }
             }
 
+            app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
 
             return response()->json([
                 'message' => 'Thu hồi quyền thành công',
@@ -266,6 +266,4 @@ class UserController extends Controller
             ], 500);
         }
     }
-
-
 }

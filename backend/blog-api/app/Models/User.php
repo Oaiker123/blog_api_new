@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -11,13 +10,11 @@ use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
-    use HasApiTokens, HasFactory, Notifiable, HasRoles;
+    use HasApiTokens, HasFactory, Notifiable;
+    use HasRoles {
+        HasRoles::hasPermissionTo as protected spatieHasPermissionTo;
+    }
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
-     */
     protected $fillable = [
         'name',
         'email',
@@ -29,49 +26,29 @@ class User extends Authenticatable
         'blocked_permissions',
     ];
 
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var array<int, string>
-     */
     protected $hidden = [
         'password',
         'remember_token',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @var array<string, string>
-     */
     protected $casts = [
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
         'blocked_permissions' => 'array',
     ];
 
-    public function profile()
-    {
-        return $this->hasOne(Profile::class);
-    }
-
-    // public function permissions()
-    // {
-    //     return $this->belongsToMany(\Spatie\Permission\Models\Permission::class, 'model_has_permissions', 'model_id', 'permission_id');
-    // }
-
     protected $guard_name = 'web';
 
-    // ⚡ Kiểm tra quyền (ghi đè mặc định)
+    // ⚡ Ghi đè hasPermissionTo — kiểm tra blocked trước
     public function hasPermissionTo($permission, $guardName = null): bool
     {
-        // Nếu quyền nằm trong blocked_permissions thì từ chối luôn
+        // Nếu quyền bị chặn → từ chối luôn
         if (in_array($permission, $this->blocked_permissions ?? [])) {
             return false;
         }
 
-        // Ngược lại, dùng Spatie mặc định
-        return parent::hasPermissionTo($permission, $guardName);
+        // Gọi lại bản gốc của Spatie
+        return $this->spatieHasPermissionTo($permission, $guardName);
     }
 
     // 🚫 Thêm quyền bị chặn
@@ -85,7 +62,7 @@ class User extends Authenticatable
         }
     }
 
-    // ✅ Gỡ bỏ chặn
+    // ✅ Gỡ chặn quyền
     public function unblockPermission(string $permission)
     {
         $blocked = $this->blocked_permissions ?? [];

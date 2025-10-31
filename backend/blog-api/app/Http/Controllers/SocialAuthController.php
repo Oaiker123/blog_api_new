@@ -32,6 +32,22 @@ class SocialAuthController extends Controller
                 ]
             );
 
+
+            // 🔥 Gán role & quyền mặc định an toàn
+            if ($user->wasRecentlyCreated) {
+                try {
+                    if (! $user->hasRole('Member')) {
+                        $user->assignRole('Member');
+                    }
+
+                    if (! $user->hasPermissionTo('view posts')) {
+                        $user->givePermissionTo('view posts');
+                    }
+                } catch (\Throwable $e) {
+                    \Log::error("Gán role hoặc quyền thất bại: " . $e->getMessage());
+                }
+            }
+
             $token = $user->createToken('api-token')->plainTextToken;
 
             $frontendUrl = config('app.frontend_url', 'http://localhost:3000/social-callback');
