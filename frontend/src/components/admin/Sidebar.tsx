@@ -3,7 +3,14 @@
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Users, Newspaper, LayoutDashboard, LogOut, Shield } from "lucide-react";
+import {
+  Users,
+  Newspaper,
+  LayoutDashboard,
+  LogOut,
+  Shield,
+} from "lucide-react";
+import Image from "next/image";
 
 export default function Sidebar({
   isCollapsed,
@@ -120,10 +127,23 @@ export default function Sidebar({
         >
           {!isCollapsed ? (
             <h2 className="text-xl font-bold flex items-center gap-2 tracking-wide">
-              <span className="text-2xl">🌀</span> OAI CORP
+              <Image
+                src="/images_logo/logo.png"
+                alt="Logo"
+                width={50}
+                height={30}
+                className="object-contain"
+              />{" "}
+              OAI CORP
             </h2>
           ) : (
-            <div className="text-2xl">🌀</div>
+            <Image
+              src="/images_logo/logo.png"
+              alt="Logo"
+              width={50}
+              height={30}
+              className="object-contain"
+            />
           )}
         </motion.div>
 
@@ -134,7 +154,11 @@ export default function Sidebar({
           transition={{ delay: 0.2 }}
           className="flex-1 flex flex-col gap-2 p-3 overflow-y-auto"
         >
-          {navItem(<LayoutDashboard size={18} />, "Dashboard", "/admin/dashboard")}
+          {navItem(
+            <LayoutDashboard size={18} />,
+            "Dashboard",
+            "/admin/dashboard"
+          )}
           {navItem(<Newspaper size={18} />, "Duyệt bài viết", "/admin/posts")}
 
           {/* ✅ Super Admin hoặc ai có quyền 'view users' đều thấy */}
@@ -143,7 +167,11 @@ export default function Sidebar({
 
           {/* ✅ Chỉ Super Admin mới thấy mục quyền */}
           {role === "Super Admin" &&
-            navItem(<Shield size={18} />, "Quản lý Quyền người dùng", "/admin/permissions")}
+            navItem(
+              <Shield size={18} />,
+              "Quản lý Quyền người dùng",
+              "/admin/permissions"
+            )}
         </motion.nav>
 
         {/* Logout */}

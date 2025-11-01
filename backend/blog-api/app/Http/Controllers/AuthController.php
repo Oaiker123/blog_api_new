@@ -294,5 +294,84 @@ class AuthController extends Controller
         ], 200);
     }
 
+    // ==========================
+    // 🔐 QUÊN MẬT KHẨU
+    // ==========================
+    public function forgotPassword(Request $request)
+    {
+        $request->validate(['email' => 'required|email']);
+
+        $user = User::where('email', $request->email)->first();
+
+        if (!$user) {
+            return response()->json(['message' => 'Email không tồn tại trong hệ thống!'], 404);
+        }
+
+        $otp = rand(100000, 999999);
+        $user->otp_code = $otp;
+        $user->otp_expires_at = now()->addMinutes(10);
+        $user->save();
+
+        Mail::raw("Mã OTP khôi phục mật khẩu của bạn là: $otp (hết hạn sau 10 phút).", function ($message) use ($user) {
+            $message->to($user->email)
+                    ->subject('Khôi phục mật khẩu');
+        });
+
+        return response()->json(['message' => 'OTP khôi phục đã được gửi qua email!']);
+    }
+
+
+    public function verifyResetOtp(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'otp' => 'required|string|size:6',
+        ]);
+
+        $user = User::where('email', $request->email)->first();
+
+        if (!$user) {
+            return response()->json(['message' => 'Không tìm thấy người dùng!'], 404);
+        }
+
+        if ($user->otp_code !== $request->otp) {
+            return response()->json(['message' => 'OTP không chính xác!'], 400);
+        }
+
+        if (now()->greaterThan($user->otp_expires_at)) {
+            return response()->json(['message' => 'OTP đã hết hạn!'], 400);
+        }
+
+        // ✅ Xác minh thành công
+        $user->otp_code = null;
+        $user->otp_expires_at = null;
+        $user->save();
+
+        return response()->json([
+            'message' => 'Xác minh OTP thành công! Bạn có thể đặt lại mật khẩu.',
+            'user_id' => $user->id,
+        ], 200);
+    }
+
+
+    public function resetPassword(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        $user = User::where('email', $request->email)->first();
+
+        if (!$user) {
+            return response()->json(['message' => 'Không tìm thấy người dùng!'], 404);
+        }
+
+        $user->password = Hash::make($request->password);
+        $user->save();
+
+        return response()->json(['message' => 'Đặt lại mật khẩu thành công!'], 200);
+    }
+
 
 }

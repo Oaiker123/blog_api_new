@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { LogOut, LogIn, Menu, X } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
+import Image from "next/image";
 
 const menuItems = [
   { label: "Trang chủ", path: "/home" },
@@ -95,7 +96,13 @@ export default function Header() {
           onClick={() => router.push("/home")}
           className="text-2xl font-extrabold text-blue-600 cursor-pointer select-none hover:scale-105 transition-transform"
         >
-          My<span className="text-gray-900">App</span>
+          <Image
+            src="/images_logo/logo.png"
+            alt="Logo"
+            width={50}
+            height={30}
+            className="object-contain"
+          />
         </div>
 
         {/* 💻 Menu desktop + Search */}

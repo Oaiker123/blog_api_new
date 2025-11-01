@@ -89,7 +89,8 @@ export default function LoginPage() {
             localStorage.removeItem("rememberMe");
           }
 
-          const roleNames = data.user?.roles?.map((r: any) => r.name || r) || [];
+          const roleNames =
+            data.user?.roles?.map((r: any) => r.name || r) || [];
           const permissionNames = data.user?.permissions || [];
 
           const canAccessAdmin =
@@ -229,15 +230,33 @@ export default function LoginPage() {
         </button>
       </motion.form>
 
-      <p className="text-center text-sm text-gray-600 mt-6">
-        Chưa có tài khoản?{" "}
-        <button
-          onClick={() => router.push("/register")}
-          className="text-blue-600 hover:underline"
-        >
-          Đăng ký ngay
-        </button>
-      </p>
+      <div className="mt-8 space-y-3 text-center text-sm text-gray-600">
+        <p>
+          Chưa có tài khoản?{" "}
+          <button
+            onClick={() => router.push("/register")}
+            className="font-medium text-blue-600 hover:text-blue-700 transition-colors"
+          >
+            Đăng ký ngay
+          </button>
+        </p>
+
+        <div className="flex items-center justify-center gap-2 text-gray-400 text-xs">
+          <div className="h-px w-10 bg-gray-300"></div>
+          <span>hoặc</span>
+          <div className="h-px w-10 bg-gray-300"></div>
+        </div>
+
+        <p>
+          Quên mật khẩu?{" "}
+          <button
+            onClick={() => router.push("/forgot-password")}
+            className="font-medium text-blue-600 hover:text-blue-700 transition-colors"
+          >
+            Khôi phục ngay
+          </button>
+        </p>
+      </div>
 
       <div className="flex flex-col gap-3 mt-4">
         <button

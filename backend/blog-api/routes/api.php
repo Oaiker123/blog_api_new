@@ -32,6 +32,12 @@ Route::prefix('auth')->group(function () {
     Route::post('/verify-otp', [AuthController::class, 'verifyOtp']);
     Route::post('/resend-otp', [AuthController::class, 'resendOtp']);
 
+    // 🔐 QUÊN MẬT KHẨU
+    Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+    Route::post('/verify-reset-otp', [AuthController::class, 'verifyResetOtp']);
+    Route::post('/reset-password', [AuthController::class, 'resetPassword']);
+
+
     // 🔹 Đăng nhập / Đăng xuất / Lấy thông tin
     Route::post('/login', [AuthController::class, 'login']);
     Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
