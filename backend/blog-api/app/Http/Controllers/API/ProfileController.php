@@ -133,22 +133,28 @@ class ProfileController extends Controller
 
 
     /**
-     * 🧍 Xem profile của chính user (đăng nhập)
-     */
+    * 🧍 Xem profile của chính user (đăng nhập)
+    * 🔄 Nếu chưa có profile -> tự tạo mặc định
+    */
     public function showSelf(Request $request)
     {
         $user = $request->user();
-        $profile = $user->profile;
 
-        if (!$profile) {
-            return response()->json(['message' => 'Profile not found'], 404);
-        }
+        // Nếu user chưa có profile thì tự tạo
+        $profile = $user->profile ?? $user->profile()->create([
+            'user_id' => $user->id,
+            'username' => $user->name ?? 'user' . $user->id,
+            'display_name' => $user->name ?? 'Người dùng',
+            'bio' => 'Chưa có mô tả.',
+            'visibility' => 'public',
+        ]);
 
         return response()->json([
             'message' => 'Profile fetched successfully',
             'data' => $this->formatProfile($profile)
         ]);
     }
+
 
     /**
      * 🌍 Xem profile công khai của người khác bằng username

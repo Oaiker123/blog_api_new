@@ -24,6 +24,27 @@ export default function Header() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
 
+  // DÒNG CẦN THÊM: State để lưu avatar URL
+  const [userProfile, setUserProfile] = useState<{ avatar_url: string } | null>(
+    null
+  );
+  const defaultAvatar = "/avt/image.png"; // Dùng lại default avatar của bạn
+
+  // Function để fetch profile (có thể tái sử dụng từ ProfilePage)
+  const fetchUserProfile = () => {
+    // Chỉ fetch nếu đã đăng nhập
+    if (!localStorage.getItem("token")) return;
+
+    api
+      .get("/user/profile")
+      .then((res) => {
+        setUserProfile(res.data.data);
+      })
+      .catch((err) => {
+        console.error("Error fetching user profile in header:", err);
+      });
+  };
+
   useEffect(() => {
     setIsClient(true); // ✅ đánh dấu đã chạy bên client
     const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -40,6 +61,11 @@ export default function Header() {
     handleResize();
     const token = localStorage.getItem("token");
     setIsLoggedIn(!!token);
+
+    // DÒNG CẦN THÊM: Gọi API để lấy profile
+    if (!!token) {
+      fetchUserProfile();
+    }
 
     window.addEventListener("resize", handleResize);
     window.addEventListener("scroll", handleScroll);
@@ -67,6 +93,7 @@ export default function Header() {
       localStorage.removeItem("token");
       localStorage.removeItem("user");
       setIsLoggedIn(false);
+      setUserProfile(null); // <== DÒNG CẦN THÊM: Xóa profile
       toast.success("✅ Đăng xuất thành công!");
       router.push("/login");
     } catch (error: any) {
@@ -160,7 +187,8 @@ export default function Header() {
                   className="flex items-center gap-2 focus:outline-none group"
                 >
                   <img
-                    src="https://api.dicebear.com/7.x/adventurer/svg?seed=cat"
+                    // DÒNG CẦN CHỈNH SỬA
+                    src={userProfile?.avatar_url || defaultAvatar}
                     alt="Avatar"
                     className="w-10 h-10 rounded-full border-2 border-blue-100 group-hover:border-blue-400 transition-all duration-200"
                   />

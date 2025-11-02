@@ -69,4 +69,11 @@ class User extends Authenticatable
         $this->blocked_permissions = array_values(array_diff($blocked, [$permission]));
         $this->save();
     }
+
+    // 🧩 Quan hệ 1-1 với Profile
+    public function profile()
+    {
+        return $this->hasOne(\App\Models\Profile::class, 'user_id');
+    }
+
 }
