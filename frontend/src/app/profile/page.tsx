@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { Loader2, User, Edit, LogOut, Camera, Trash2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useRouter } from "next/navigation"; // <== DÒNG CẦN THÊM
+import { toast } from "sonner";
 
 function Card({
   children,
@@ -103,24 +104,45 @@ export default function ProfilePage() {
       setProfile(res.data.data);
     } catch (err) {
       console.error(err);
-      alert("Không thể tải ảnh lên. Vui lòng thử lại!");
+      toast.error("Không thể tải ảnh lên. Vui lòng thử lại!");
     } finally {
       setUploading(false);
     }
   };
 
+  // ✅ Xoá ảnh có toast
   const handleRemoveImage = async (field: "avatar" | "cover") => {
-    if (!confirm("Bạn có chắc muốn gỡ ảnh này không?")) return;
-    setUploading(true);
-    try {
-      const res = await api.put("/user/profile", { [`remove_${field}`]: true });
-      setProfile(res.data.data);
-    } catch (err) {
-      console.error(err);
-      alert("Không thể gỡ ảnh. Vui lòng thử lại!");
-    } finally {
-      setUploading(false);
-    }
+    const isAvatar = field === "avatar";
+    const name = isAvatar ? "ảnh đại diện" : "ảnh bìa";
+
+    toast.info(`Bạn có chắc muốn gỡ ${name}?`, {
+      action: {
+        label: "Gỡ ảnh",
+        onClick: async () => {
+          setUploading(true);
+          const toastId = toast.loading("Đang gỡ ảnh...");
+
+          try {
+            const endpoint = isAvatar ? "/avatar" : "/cover";
+            await api.delete(endpoint);
+
+            // ✅ Cập nhật UI ngay lập tức (không cần reload)
+            setProfile((prev: any) => ({
+              ...prev,
+              [isAvatar ? "avatar_url" : "cover_url"]: null,
+            }));
+
+            toast.success(`Đã gỡ ${name}!`, { id: toastId });
+          } catch (err) {
+            console.error(err);
+            toast.error("Không thể gỡ ảnh. Vui lòng thử lại!", { id: toastId });
+          } finally {
+            setUploading(false);
+          }
+        },
+      },
+      duration: 4000,
+    });
   };
 
   if (loading) {
@@ -265,12 +287,10 @@ export default function ProfilePage() {
             </p>
 
             <div className="mt-5 flex justify-center md:justify-start gap-3">
-              <Button onClick={() => alert("Tính năng chỉnh sửa sắp ra mắt!")}>
+              <Button onClick={() => router.push("/profile/edit")}>
                 <Edit className="w-4 h-4" /> Chỉnh sửa
               </Button>
-              <Button variant="outline" onClick={() => alert("Đăng xuất!")}>
-                <LogOut className="w-4 h-4" /> Đăng xuất
-              </Button>
+
             </div>
           </CardContent>
         </Card>
