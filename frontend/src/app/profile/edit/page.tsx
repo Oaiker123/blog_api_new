@@ -1,7 +1,21 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Loader2, ArrowLeft, Save, Camera, Trash2 } from "lucide-react";
+import {
+  Loader2,
+  ArrowLeft,
+  Save,
+  Camera,
+  Trash2,
+  Facebook,
+  Globe,
+  Linkedin,
+  Github,
+  Twitter,
+  Youtube,
+  Instagram,
+  Music,
+} from "lucide-react";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -50,25 +64,51 @@ export default function EditProfilePage() {
   const defaultCover = "/image.png";
   const defaultAvatar = "/avt/image.png";
 
+  // ✅ Lấy dữ liệu hồ sơ
   useEffect(() => {
     api
       .get("/user/profile")
-      .then((res) => setProfile(res.data.data))
+      .then((res) => {
+        const data = res.data.data;
+
+        // 🔹 Xử lý social_links: JSON string, array hoặc object đều được
+        const raw = data.social_links;
+        let social: any[] = [];
+        try {
+          social =
+            typeof raw === "string"
+              ? JSON.parse(raw)
+              : Array.isArray(raw)
+              ? raw
+              : Object.values(raw || {});
+        } catch {
+          social = [];
+        }
+
+        // 🔹 Chuẩn hóa ngày sinh
+        let formattedDate = "";
+        if (data.birthdate) {
+          if (data.birthdate.includes("/")) {
+            const [day, month, year] = data.birthdate.split("/");
+            formattedDate = `${year}-${month.padStart(2, "0")}-${day.padStart(
+              2,
+              "0"
+            )}`;
+          } else if (data.birthdate.includes("-")) {
+            formattedDate = data.birthdate.split("T")[0];
+          }
+        }
+
+        setProfile({
+          ...data,
+          birthdate: formattedDate,
+          social_links: social,
+          newSocialLink: "",
+        });
+      })
       .catch(() => toast.error("Không thể tải thông tin người dùng!"))
       .finally(() => setLoading(false));
   }, []);
-
-  // ✅ Hiển thị preview ngay khi chọn file, rồi upload
-  const handleSelectFile = async (file: File, field: "avatar" | "cover") => {
-    if (!file) return;
-
-    // Tạo preview trước khi upload
-    const previewUrl = URL.createObjectURL(file);
-    if (field === "avatar") setPreviewAvatar(previewUrl);
-    else setPreviewCover(previewUrl);
-
-    await handleUpload(file, field);
-  };
 
   // ✅ Upload ảnh
   const handleUpload = async (file: File, field: "avatar" | "cover") => {
@@ -91,6 +131,14 @@ export default function EditProfilePage() {
     }
   };
 
+  const handleSelectFile = async (file: File, field: "avatar" | "cover") => {
+    if (!file) return;
+    const previewUrl = URL.createObjectURL(file);
+    if (field === "avatar") setPreviewAvatar(previewUrl);
+    else setPreviewCover(previewUrl);
+    await handleUpload(file, field);
+  };
+
   const handleRemoveImage = async (field: "avatar" | "cover") => {
     const isAvatar = field === "avatar";
     const name = isAvatar ? "ảnh đại diện" : "ảnh bìa";
@@ -101,7 +149,6 @@ export default function EditProfilePage() {
         onClick: async () => {
           setUploading(true);
           const toastId = toast.loading("Đang gỡ ảnh...");
-
           try {
             const endpoint = isAvatar ? "/avatar" : "/cover";
             await api.delete(endpoint);
@@ -132,6 +179,12 @@ export default function EditProfilePage() {
         display_name: profile.display_name,
         username: profile.username,
         bio: profile.bio,
+        location: profile.location,
+        birthdate: profile.birthdate,
+        gender: profile.gender,
+        phone: profile.phone,
+        website: profile.website,
+        social_links: JSON.stringify(profile.social_links || []),
       });
       toast.success("Cập nhật hồ sơ thành công!", { id: toastId });
       router.push("/profile");
@@ -262,7 +315,6 @@ export default function EditProfilePage() {
 
         <div className="h-16" />
 
-        {/* Form */}
         <div className="p-8 space-y-5">
           <Input
             label="Tên hiển thị"
@@ -289,15 +341,196 @@ export default function EditProfilePage() {
             />
           </div>
 
+          {/* 🏠 Thông tin phụ */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+            <Input
+              label="Địa điểm"
+              value={profile.location || ""}
+              onChange={(v) => setProfile({ ...profile, location: v })}
+              placeholder="VD: Hà Nội, Việt Nam"
+            />
+
+            <Input
+              label="Số điện thoại"
+              value={profile.phone || ""}
+              onChange={(v) => setProfile({ ...profile, phone: v })}
+              placeholder="VD: 0901234567"
+              type="tel"
+            />
+
+            <Input
+              label="Ngày sinh"
+              value={profile.birthdate || ""}
+              onChange={(v) => setProfile({ ...profile, birthdate: v })}
+              type="date"
+            />
+
+            <div className="flex flex-col gap-1">
+              <label className="text-sm font-medium text-gray-700">
+                Giới tính
+              </label>
+              <select
+                value={profile.gender || ""}
+                onChange={(e) =>
+                  setProfile({ ...profile, gender: e.target.value })
+                }
+                className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-gray-800"
+              >
+                <option value="">Chọn giới tính</option>
+                <option value="male">Nam</option>
+                <option value="female">Nữ</option>
+                <option value="other">Khác</option>
+              </select>
+            </div>
+
+            <Input
+              label="Website cá nhân"
+              value={profile.website || ""}
+              onChange={(v) => setProfile({ ...profile, website: v })}
+              placeholder="https://example.com"
+              type="url"
+            />
+          </div>
+
+          {/* 🌐 Liên kết mạng xã hội */}
+          <div className="flex flex-col gap-2 pt-2">
+            <label className="text-sm font-medium text-gray-700">
+              Liên kết mạng xã hội
+            </label>
+
+            <div className="space-y-2">
+              {(Array.isArray(profile.social_links)
+                ? profile.social_links
+                : []
+              ).map((item: any, index: number) => {
+                const link = typeof item === "string" ? item : item.url || "";
+
+                let Icon = Globe;
+                let color = "text-gray-600";
+
+                if (link.includes("facebook.com")) {
+                  Icon = Facebook;
+                  color = "text-blue-600";
+                } else if (link.includes("linkedin.com")) {
+                  Icon = Linkedin;
+                  color = "text-sky-700";
+                } else if (link.includes("github.com")) {
+                  Icon = Github;
+                  color = "text-gray-800";
+                } else if (
+                  link.includes("twitter.com") ||
+                  link.includes("x.com")
+                ) {
+                  Icon = Twitter;
+                  color = "text-sky-500";
+                } else if (link.includes("instagram.com")) {
+                  Icon = Instagram;
+                  color = "text-pink-500";
+                } else if (link.includes("youtube.com")) {
+                  Icon = Youtube;
+                  color = "text-red-600";
+                } else if (link.includes("tiktok.com")) {
+                  Icon = Music;
+                  color = "text-black";
+                }
+
+                return (
+                  <div key={index} className="flex items-center gap-2">
+                    <Icon className={`w-4 h-4 ${color}`} />
+                    <input
+                      type="url"
+                      value={link}
+                      onChange={(e) => {
+                        const newLinks = [...profile.social_links];
+                        newLinks[index] = e.target.value;
+                        setProfile({ ...profile, social_links: newLinks });
+                      }}
+                      placeholder="Dán liên kết mạng xã hội..."
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-gray-800"
+                    />
+                    <button
+                      onClick={() => {
+                        const newLinks = [...profile.social_links];
+                        newLinks.splice(index, 1);
+                        setProfile({ ...profile, social_links: newLinks });
+                      }}
+                      className="p-2 hover:bg-red-50 rounded-full transition"
+                      title="Xóa liên kết này"
+                    >
+                      <Trash2 className="w-4 h-4 text-red-500" />
+                    </button>
+                  </div>
+                );
+              })}
+
+              {/* Ô thêm mới */}
+              <div className="flex items-center gap-2">
+                <Globe className="w-4 h-4 text-gray-400" />
+                <input
+                  type="url"
+                  placeholder="Thêm liên kết mới (Facebook, LinkedIn, v.v...)"
+                  value={profile.newSocialLink || ""}
+                  onChange={(e) =>
+                    setProfile({ ...profile, newSocialLink: e.target.value })
+                  }
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && profile.newSocialLink.trim() !== "") {
+                      e.preventDefault();
+                      const newLinks = [
+                        ...(Array.isArray(profile.social_links)
+                          ? profile.social_links
+                          : []),
+                        profile.newSocialLink.trim(),
+                      ];
+                      setProfile({
+                        ...profile,
+                        social_links: newLinks,
+                        newSocialLink: "",
+                      });
+                    }
+                  }}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-gray-800"
+                />
+                <button
+                  onClick={() => {
+                    if (!profile.newSocialLink.trim()) return;
+                    const newLinks = [
+                      ...(Array.isArray(profile.social_links)
+                        ? profile.social_links
+                        : []),
+                      profile.newSocialLink.trim(),
+                    ];
+                    setProfile({
+                      ...profile,
+                      social_links: newLinks,
+                      newSocialLink: "",
+                    });
+                  }}
+                  className="p-2 bg-blue-100 hover:bg-blue-200 rounded-full transition"
+                  title="Thêm liên kết"
+                >
+                  <Save className="w-4 h-4 text-blue-600" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Nút lưu */}
           <div className="flex justify-end">
             <button
               onClick={handleSave}
               disabled={saving}
-              className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2 rounded-lg font-medium hover:bg-blue-700 focus:ring-2 focus:ring-blue-400 transition disabled:opacity-60"
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition disabled:opacity-70 disabled:cursor-not-allowed"
             >
-              {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-              <Save className="w-4 h-4" />
-              Lưu thay đổi
+              {saving ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" /> Đang lưu...
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4" /> Lưu thay đổi
+                </>
+              )}
             </button>
           </div>
         </div>
