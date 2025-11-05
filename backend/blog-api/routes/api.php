@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\API\ProfileController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\SocialAuthController;
 use Illuminate\Http\Request;
@@ -105,6 +106,8 @@ Route::prefix('posts')->middleware('auth:sanctum')->group(function () {
     // Moderator: duyệt bài
     Route::put('/{id}/approve', [PostController::class, 'approve'])->middleware('permission:approve posts');
 });
+
+Route::get('/categories', [CategoryController::class, 'index']);
 
 // Thêm route để lấy thông tin user hiện tại (cho frontend)
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {

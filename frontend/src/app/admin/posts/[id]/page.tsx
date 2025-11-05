@@ -1,0 +1,286 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { api } from "@/lib/api";
+import { Loader2, ArrowLeft, Trash2, Edit, Eye, X } from "lucide-react";
+import { toast } from "sonner";
+import Link from "next/link";
+
+export default function PostDetailPage() {
+  const { id } = useParams();
+  const router = useRouter();
+  const [post, setPost] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  useEffect(() => {
+    if (!id) return;
+
+    api
+      .get(`/posts/${id}`)
+      .then((res) => {
+        const postData = res.data.post || res.data;
+        setPost(postData);
+      })
+      .catch(() => toast.error("Không thể tải bài viết"))
+      .finally(() => setLoading(false));
+  }, [id]);
+
+  const handleDelete = async () => {
+    if (!confirm("Bạn có chắc muốn xóa bài viết này?")) return;
+
+    try {
+      await api.delete(`/posts/${id}`);
+      toast.success("Đã xóa bài viết!");
+      router.push("/admin/posts");
+    } catch {
+      toast.error("Lỗi khi xóa bài viết");
+    }
+  };
+
+  // ✅ Chuẩn hóa đường dẫn ảnh
+  const getImageUrl = (path: string) => {
+    if (!path) return "";
+    const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    if (path.startsWith("http")) return path;
+    if (path.startsWith("storage/")) return `${base}/${path}`;
+    return `${base}/storage/${path}`;
+  };
+
+  // ✅ Gallery chỉ lấy ảnh media (không bao gồm thumbnail)
+  const getGalleryImages = () => {
+    if (!post?.media?.length) return [];
+    return post.media
+      .filter((m: any) => m.type === "image")
+      .map((m: any, i: number) => ({
+        url: getImageUrl(m.url),
+        name: m.name || `Ảnh ${i + 1}`,
+      }));
+  };
+
+  const openImagePreview = (url: string, index: number) => {
+    setPreviewImage(url);
+    setCurrentImageIndex(index);
+  };
+
+  const navigateImage = (direction: "prev" | "next") => {
+    const images = getGalleryImages();
+    if (images.length === 0) return;
+    let newIndex =
+      direction === "next"
+        ? (currentImageIndex + 1) % images.length
+        : (currentImageIndex - 1 + images.length) % images.length;
+    setCurrentImageIndex(newIndex);
+    setPreviewImage(images[newIndex].url);
+  };
+
+  if (loading)
+    return (
+      <div className="flex justify-center mt-10">
+        <Loader2 className="animate-spin text-gray-500" />
+      </div>
+    );
+
+  if (!post)
+    return (
+      <div className="text-center mt-10 text-gray-500">
+        ❌ Không tìm thấy bài viết
+      </div>
+    );
+
+  const galleryImages = getGalleryImages() || [];
+
+  return (
+    <div className="max-w-5xl mx-auto p-6 bg-white rounded-lg shadow">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => router.back()}
+            className="flex items-center text-gray-600 hover:text-gray-800"
+          >
+            <ArrowLeft className="w-4 h-4 mr-1" /> Quay lại
+          </button>
+    
+        </div>
+
+        <div className="flex gap-3">
+          <Link
+            href={`/admin/posts/${id}/edit`}
+            className="text-blue-600 hover:text-blue-800"
+            title="Chỉnh sửa"
+          >
+            <Edit />
+          </Link>
+          <button
+            onClick={handleDelete}
+            className="text-red-600 hover:text-red-800"
+            title="Xóa"
+          >
+            <Trash2 />
+          </button>
+        </div>
+      </div>
+
+      <h1 className="text-2xl font-bold ml-3 mb-4">{post.title}</h1>
+
+      {/* 🖼️ Ảnh đại diện */}
+      {post.thumbnail && (
+        <div className="mb-6 text-center">
+          <img
+            src={getImageUrl(post.thumbnail)}
+            alt={post.title}
+            className="mx-auto w-auto max-w-[300px] h-auto max-h-[300px] rounded-lg border object-contain cursor-pointer"
+            onClick={() => setPreviewImage(getImageUrl(post.thumbnail))}
+            onError={(e) => {
+              console.error("❌ Thumbnail lỗi:", post.thumbnail);
+              e.currentTarget.src = `${
+                process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+              }/storage/${post.thumbnail}`;
+            }}
+          />
+          <p className="text-sm text-gray-500 mt-2">Ảnh đại diện</p>
+        </div>
+      )}
+
+      {/* 🖼️ Gallery ảnh */}
+      {Array.isArray(galleryImages) && galleryImages.length > 0 && (
+        <div className="mb-6">
+          <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+            <Eye className="w-5 h-5" />
+            Gallery ảnh ({galleryImages.length})
+          </h3>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            {galleryImages.map((img, index) => (
+              <div
+                key={index}
+                className="relative group cursor-pointer bg-gray-100 rounded-lg overflow-hidden border hover:shadow"
+                onClick={() => openImagePreview(img.url, index)}
+              >
+                <img
+                  src={img.url}
+                  alt={img.name}
+                  className="w-full h-32 object-cover group-hover:scale-105 transition-transform duration-200"
+                  onError={(e) => {
+                    console.error("❌ Gallery lỗi:", img.url);
+                    e.currentTarget.src = `${
+                      process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+                    }/storage/${img.url}`;
+                  }}
+                />
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-center justify-center">
+                  <Eye className="w-5 h-5 text-white opacity-0 group-hover:opacity-100" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Nội dung */}
+      <p className="text-gray-700 mb-4">{post.excerpt}</p>
+      <div
+        className="prose max-w-none"
+        dangerouslySetInnerHTML={{ __html: post.content }}
+      />
+
+      {/* Thông tin thêm */}
+      <div className="border-t mt-6 pt-4 text-sm text-gray-500 space-y-1">
+        <p>
+          📅 Ngày đăng: {new Date(post.created_at).toLocaleDateString("vi-VN")}
+        </p>
+        <p>
+          🧑 Tác giả:{" "}
+          <span className="font-medium">{post.user?.name || "Không rõ"}</span>
+        </p>
+        <p>
+          🏷️ Danh mục:{" "}
+          <span className="font-medium">
+            {post.category?.name || "Chưa có"}
+          </span>
+        </p>
+        {post.tags?.length > 0 && (
+          <p>
+            🔖 Tags:{" "}
+            {post.tags.map((t: any) => (
+              <span
+                key={t.id}
+                className="inline-block bg-gray-100 border px-2 py-1 rounded-md mr-1"
+              >
+                {t.name}
+              </span>
+            ))}
+          </p>
+        )}
+        <p>
+          ⚙️ Trạng thái:{" "}
+          <span
+            className={`font-medium ${
+              post.status === "approved"
+                ? "text-green-600"
+                : post.status === "pending"
+                ? "text-yellow-600"
+                : "text-gray-600"
+            }`}
+          >
+            {post.status}
+          </span>
+        </p>
+      </div>
+
+      {/* Modal xem ảnh lớn */}
+      {previewImage && (
+        <div
+          className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4"
+          onClick={() => setPreviewImage(null)}
+        >
+          <div className="relative max-w-4xl max-h-[85vh] w-full">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-white text-sm">
+                Ảnh {currentImageIndex + 1} / {galleryImages.length}
+              </span>
+              <button
+                onClick={() => setPreviewImage(null)}
+                className="text-white hover:text-gray-300"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <img
+              src={previewImage}
+              alt={`Ảnh ${currentImageIndex + 1}`}
+              className="max-w-full max-h-[80vh] object-contain mx-auto rounded-lg"
+              onClick={(e) => e.stopPropagation()}
+            />
+
+            {galleryImages.length > 1 && (
+              <>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigateImage("prev");
+                  }}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/30 text-white p-2 rounded-full"
+                >
+                  <ArrowLeft className="w-6 h-6" />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigateImage("next");
+                  }}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/30 text-white p-2 rounded-full rotate-180"
+                >
+                  <ArrowLeft className="w-6 h-6" />
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

@@ -31,6 +31,18 @@ class RolePermissionSeeder extends Seeder
             // 🧑‍💻 Quyền hồ sơ cá nhân
             'edit own profile',
             'edit any profile',
+
+            // 💬 Bình luận
+            'create comments',
+            'delete comments',
+            'approve comments',
+
+            // ❤️ Tương tác
+            'like posts',
+            'bookmark posts',
+
+            // 📊 Báo cáo / thống kê
+            'view analytics',
         ];
 
         // ✅ Tạo quyền nếu chưa có
