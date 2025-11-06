@@ -3,8 +3,11 @@
 import { useState, useEffect } from "react";
 import { api } from "@/lib/api";
 import { useRouter } from "next/navigation";
-import { Loader2, Save, ImagePlus, X, Eye } from "lucide-react";
+import { Loader2, Save, ImagePlus, X, Eye, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
+
+import { CKEditor } from "@ckeditor/ckeditor5-react";
+import ClassicEditor from "@ckeditor/ckeditor5-build-classic";
 
 export default function CreatePostPage() {
   const router = useRouter();
@@ -53,20 +56,20 @@ export default function CreatePostPage() {
   // 🖼️ Xử lý thumbnail
   const handleThumbnailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
-    
+
     if (file) {
-      if (!file.type.startsWith('image/')) {
+      if (!file.type.startsWith("image/")) {
         toast.error("File phải là định dạng ảnh");
         return;
       }
-      
+
       if (file.size > 5 * 1024 * 1024) {
         toast.error("Ảnh không được vượt quá 5MB");
         return;
       }
 
       setThumbnail(file);
-      
+
       const reader = new FileReader();
       reader.onload = (e) => {
         setThumbnailPreview(e.target?.result as string);
@@ -81,7 +84,7 @@ export default function CreatePostPage() {
   // 🖼️ Xử lý thêm nhiều ảnh minh họa
   const handleImagesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    
+
     if (files.length === 0) return;
 
     // Kiểm tra số lượng ảnh (tối đa 10 ảnh)
@@ -94,18 +97,18 @@ export default function CreatePostPage() {
     const validFiles: File[] = [];
     const invalidFiles: string[] = [];
 
-    files.forEach(file => {
-      if (!file.type.startsWith('image/')) {
+    files.forEach((file) => {
+      if (!file.type.startsWith("image/")) {
         invalidFiles.push(`${file.name} - Không phải định dạng ảnh`);
         return;
       }
-      
+
       if (file.size > 5 * 1024 * 1024) {
         invalidFiles.push(`${file.name} - Vượt quá 5MB`);
         return;
       }
 
-      if (images.some(img => img.name === file.name)) {
+      if (images.some((img) => img.name === file.name)) {
         invalidFiles.push(`${file.name} - Đã tồn tại`);
         return;
       }
@@ -114,16 +117,20 @@ export default function CreatePostPage() {
     });
 
     if (invalidFiles.length > 0) {
-      toast.error(`Có ${invalidFiles.length} ảnh không hợp lệ:\n${invalidFiles.join('\n')}`);
+      toast.error(
+        `Có ${invalidFiles.length} ảnh không hợp lệ:\n${invalidFiles.join(
+          "\n"
+        )}`
+      );
     }
 
     if (validFiles.length > 0) {
-      setImages(prev => [...prev, ...validFiles]);
+      setImages((prev) => [...prev, ...validFiles]);
 
-      validFiles.forEach(file => {
+      validFiles.forEach((file) => {
         const reader = new FileReader();
         reader.onload = (e) => {
-          setImagePreviews(prev => [...prev, e.target?.result as string]);
+          setImagePreviews((prev) => [...prev, e.target?.result as string]);
         };
         reader.readAsDataURL(file);
       });
@@ -131,21 +138,25 @@ export default function CreatePostPage() {
       toast.success(`Đã thêm ${validFiles.length} ảnh minh họa`);
     }
 
-    e.target.value = '';
+    e.target.value = "";
   };
 
   // 🖼️ Xóa thumbnail
   const removeThumbnail = () => {
     setThumbnail(null);
     setThumbnailPreview("");
-    const fileInput = document.getElementById('thumbnail-input') as HTMLInputElement;
-    if (fileInput) fileInput.value = '';
+    const fileInput = document.getElementById(
+      "thumbnail-input"
+    ) as HTMLInputElement;
+    if (fileInput) fileInput.value = "";
   };
 
   // 🖼️ Xóa ảnh minh họa
   const removeImage = (indexToRemove: number) => {
-    setImages(prev => prev.filter((_, index) => index !== indexToRemove));
-    setImagePreviews(prev => prev.filter((_, index) => index !== indexToRemove));
+    setImages((prev) => prev.filter((_, index) => index !== indexToRemove));
+    setImagePreviews((prev) =>
+      prev.filter((_, index) => index !== indexToRemove)
+    );
   };
 
   // 🏷️ Thêm tag mới
@@ -153,7 +164,7 @@ export default function CreatePostPage() {
     if (e.key === "Enter" || e.key === ",") {
       e.preventDefault();
       const newTag = tagInput.trim();
-      
+
       if (newTag && !tags.includes(newTag)) {
         setTags([...tags, newTag]);
         setTagInput("");
@@ -172,9 +183,9 @@ export default function CreatePostPage() {
     const pastedText = e.clipboardData.getData("text");
     const newTags = pastedText
       .split(/[,;\n]+/)
-      .map(tag => tag.trim())
-      .filter(tag => tag && !tags.includes(tag));
-    
+      .map((tag) => tag.trim())
+      .filter((tag) => tag && !tags.includes(tag));
+
     if (newTags.length > 0) {
       setTags([...tags, ...newTags]);
       setTagInput("");
@@ -195,12 +206,12 @@ export default function CreatePostPage() {
       formData.append("category_id", categoryId);
       formData.append("tags", tags.join(","));
       formData.append("status", status);
-      
+
       // Thêm thumbnail (ảnh đầu tiên hoặc ảnh riêng)
       if (thumbnail) {
         formData.append("thumbnail", thumbnail);
       }
-      
+
       // Thêm ảnh minh họa
       images.forEach((image, index) => {
         formData.append(`images[${index}]`, image);
@@ -235,6 +246,15 @@ export default function CreatePostPage() {
 
   return (
     <div className="max-w-4xl mx-auto p-6 bg-white rounded-lg shadow">
+      <div className="flex items-center gap-2 mb-4">
+        <button
+          onClick={() => router.back()}
+          className="flex items-center text-gray-600 hover:text-gray-800"
+        >
+          <ArrowLeft className="w-4 h-4 mr-1" /> Quay lại
+        </button>
+      </div>
+
       <h1 className="text-2xl font-semibold mb-4">📝 Thêm bài viết mới</h1>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -274,12 +294,38 @@ export default function CreatePostPage() {
         {/* Nội dung */}
         <div>
           <label className="font-medium">Nội dung</label>
-          <textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            className="w-full border rounded-lg px-4 py-2 h-48 mt-1"
-            required
-          />
+          <div className="border rounded-lg mt-1 p-2 bg-white">
+            <CKEditor
+              editor={ClassicEditor}
+              data={content}
+              // @ts-ignore
+              onChange={(event, editor) => setContent(editor.getData())}
+              config={{
+                placeholder: "Nhập nội dung bài viết ở đây...",
+                toolbar: [
+                  "heading",
+                  "|",
+                  "bold",
+                  "italic",
+                  "link",
+                  "bulletedList",
+                  "numberedList",
+                  "blockQuote",
+                  "|",
+                  "insertTable",
+                  "undo",
+                  "redo",
+                  "imageUpload",
+                ],
+                ckfinder: {
+                  uploadUrl: "http://127.0.0.1:8000/api/upload", // route Laravel
+                  headers: {
+                    Authorization: `Bearer ${localStorage.getItem("token")}`,
+                  },
+                },
+              }}
+            />
+          </div>
         </div>
 
         {/* Danh mục */}
@@ -312,10 +358,12 @@ export default function CreatePostPage() {
             onChange={handleThumbnailChange}
             className="w-full border rounded-lg px-4 py-2 mt-1"
           />
-          
+
           {thumbnailPreview ? (
             <div className="mt-3">
-              <p className="text-sm text-gray-600 mb-2">Preview ảnh đại diện:</p>
+              <p className="text-sm text-gray-600 mb-2">
+                Preview ảnh đại diện:
+              </p>
               <div className="flex flex-wrap gap-4 items-start">
                 <div className="relative">
                   <img
@@ -333,17 +381,24 @@ export default function CreatePostPage() {
                     <X className="w-4 h-4" />
                   </button>
                 </div>
-                
+
                 <div className="flex-1 min-w-[200px]">
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                    <p className="text-sm font-medium text-blue-800">📝 Thông tin ảnh đại diện:</p>
+                    <p className="text-sm font-medium text-blue-800">
+                      📝 Thông tin ảnh đại diện:
+                    </p>
                     <div className="text-xs text-blue-700 mt-1 space-y-1">
                       <p>• Tên: {thumbnail?.name}</p>
-                      <p>• Kích thước: {(thumbnail?.size && (thumbnail.size / 1024 / 1024).toFixed(2))} MB</p>
+                      <p>
+                        • Kích thước:{" "}
+                        {thumbnail?.size &&
+                          (thumbnail.size / 1024 / 1024).toFixed(2)}{" "}
+                        MB
+                      </p>
                       <p>• Định dạng: {thumbnail?.type}</p>
                     </div>
                   </div>
-                  
+
                   <button
                     type="button"
                     onClick={() => setPreviewImage(thumbnailPreview)}
@@ -357,7 +412,8 @@ export default function CreatePostPage() {
             </div>
           ) : (
             <div className="mt-2 text-sm text-gray-500">
-              🖼️ Chưa có ảnh đại diện. Ảnh này sẽ hiển thị làm ảnh chính của bài viết.
+              🖼️ Chưa có ảnh đại diện. Ảnh này sẽ hiển thị làm ảnh chính của bài
+              viết.
             </div>
           )}
         </div>
@@ -375,19 +431,24 @@ export default function CreatePostPage() {
             onChange={handleImagesChange}
             className="w-full border rounded-lg px-4 py-2 mt-1"
           />
-          
+
           {images.length > 0 && (
             <div className="mt-2 text-sm text-blue-600 font-medium">
               📸 Đã chọn {images.length}/10 ảnh minh họa
             </div>
           )}
-          
+
           {imagePreviews.length > 0 && (
             <div className="mt-4">
-              <p className="text-sm text-gray-600 mb-3">Preview ảnh minh họa:</p>
+              <p className="text-sm text-gray-600 mb-3">
+                Preview ảnh minh họa:
+              </p>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {imagePreviews.map((preview, index) => (
-                  <div key={index} className="relative group bg-gray-50 rounded-lg p-3 border border-gray-200">
+                  <div
+                    key={index}
+                    className="relative group bg-gray-50 rounded-lg p-3 border border-gray-200"
+                  >
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-xs font-medium text-gray-700 bg-green-100 px-2 py-1 rounded">
                         Ảnh {index + 1}
@@ -401,23 +462,26 @@ export default function CreatePostPage() {
                         <X className="w-4 h-4" />
                       </button>
                     </div>
-                    
+
                     <img
                       src={preview}
                       alt={`Preview ${index + 1}`}
                       className="w-full h-32 object-cover rounded-lg border-2 border-green-200 cursor-pointer shadow-sm"
                       onClick={() => setPreviewImage(preview)}
                     />
-                    
+
                     <div className="mt-2 text-xs text-gray-600 space-y-1">
                       <p className="truncate" title={images[index]?.name}>
                         📄 {images[index]?.name}
                       </p>
                       <p>
-                        💾 {(images[index]?.size && (images[index].size / 1024 / 1024).toFixed(2))} MB
+                        💾{" "}
+                        {images[index]?.size &&
+                          (images[index].size / 1024 / 1024).toFixed(2)}{" "}
+                        MB
                       </p>
                     </div>
-                    
+
                     <button
                       type="button"
                       onClick={() => setPreviewImage(preview)}
@@ -431,12 +495,14 @@ export default function CreatePostPage() {
               </div>
             </div>
           )}
-          
+
           {images.length === 0 && (
             <div className="mt-3 text-sm text-gray-500 bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
-              🖼️ Chưa có ảnh minh họa nào. 
+              🖼️ Chưa có ảnh minh họa nào.
               <br />
-              <span className="text-xs">Các ảnh này sẽ hiển thị trong gallery của bài viết</span>
+              <span className="text-xs">
+                Các ảnh này sẽ hiển thị trong gallery của bài viết
+              </span>
             </div>
           )}
         </div>
@@ -444,7 +510,7 @@ export default function CreatePostPage() {
         {/* Tags */}
         <div>
           <label className="font-medium">Thẻ (Tags)</label>
-          
+
           <div className="flex flex-wrap gap-2 mb-2 mt-1">
             {tags.map((tag, index) => (
               <span
@@ -472,9 +538,10 @@ export default function CreatePostPage() {
             onPaste={handleTagPaste}
             className="w-full border rounded-lg px-4 py-2 mt-1 focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
           />
-          
+
           <p className="text-xs text-gray-500 mt-1">
-            💡 Nhấn Enter, dấu phẩy hoặc paste nhiều tags (cách nhau bằng dấu phẩy)
+            💡 Nhấn Enter, dấu phẩy hoặc paste nhiều tags (cách nhau bằng dấu
+            phẩy)
           </p>
         </div>
 
@@ -509,7 +576,7 @@ export default function CreatePostPage() {
 
       {/* Modal xem ảnh lớn */}
       {previewImage && (
-        <div 
+        <div
           className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4"
           onClick={() => setPreviewImage(null)}
         >

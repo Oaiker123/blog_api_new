@@ -121,6 +121,28 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     ]);
 });
 
+Route::middleware('auth:sanctum')->get('/me', function (Request $request) {
+    $user = $request->user();
+
+    return response()->json([
+        'id' => $user->id,
+        'name' => $user->name,
+        'email' => $user->email,
+        'roles' => $user->getRoleNames(),
+        'permissions' => $user->getAllPermissions()->pluck('name'),
+    ]);
+});
+
+Route::post('/upload', function (Request $request) {
+    if ($request->hasFile('upload')) {
+        $path = $request->file('upload')->store('uploads', 'public');
+        return response()->json([
+            'url' => asset('storage/' . $path)
+        ]);
+    }
+    return response()->json(['error' => ['message' => 'Không có file nào được upload']], 400);
+})->middleware('auth:sanctum');
+
 Route::get('/test', function () {
     return response()->json(['message' => 'Hello from Laravel!']);
 });

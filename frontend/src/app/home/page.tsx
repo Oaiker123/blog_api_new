@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import Header from "./components/Header";
+import { useRouter } from "next/navigation";
 
 interface UserInfo {
   id: number;
@@ -18,6 +19,16 @@ export default function HomePage() {
   const [scrollY, setScrollY] = useState(0);
 
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
+
+  const [posts, setPosts] = useState<any[]>([]);
+  const router = useRouter();
+
+  useEffect(() => {
+    api
+      .get("/posts")
+      .then((res) => setPosts(res.data.posts || res.data))
+      .catch((err) => console.error("Không thể tải bài viết:", err));
+  }, []);
 
   // ✅ Thêm đoạn này: Cập nhật user mới nhất khi reload trang
   useEffect(() => {
@@ -90,11 +101,18 @@ export default function HomePage() {
     );
   }
 
+  function getImageUrl(path: string) {
+    if (!path) return "";
+    if (path.startsWith("http")) return path; // nếu đã là URL đầy đủ
+    return `${
+      process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+    }/storage/${path}`;
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 animate-fadeIn">
       {/* 🔹 Header */}
       <Header />
-
       {/* 🔹 Hero Section có parallax */}
       <section
         className="relative flex flex-col items-center justify-center text-center min-h-[90vh] overflow-hidden bg-gradient-to-b from-blue-100 via-white to-gray-50"
@@ -125,7 +143,6 @@ export default function HomePage() {
           </button>
         </div>
       </section>
-
       {/* 🔹 Section tính năng */}
       <section className="py-24 bg-white text-center">
         <h2 className="text-3xl font-semibold mb-10 text-gray-800">
@@ -150,7 +167,6 @@ export default function HomePage() {
           )}
         </div>
       </section>
-
       {/* 🔹 Section giới thiệu */}
       <section className="py-24 bg-gray-100 text-center">
         <h2 className="text-3xl font-semibold mb-6 text-gray-800">
@@ -179,6 +195,41 @@ export default function HomePage() {
         </div>
       </section>
 
+      <section className="py-24 bg-white text-center">
+        <h2 className="text-3xl font-semibold mb-10 text-gray-800">
+          📰 Bài viết mới nhất
+        </h2>
+
+        {posts.length === 0 ? (
+          <p className="text-gray-500">Chưa có bài viết nào.</p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto px-6">
+            {posts.map((post) => (
+              <div
+                key={post.id}
+                onClick={() => router.push(`/posts/${post.id}`)}
+                className="cursor-pointer bg-gray-50 border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:-translate-y-1 transition-all p-6"
+              >
+                {post.thumbnail && (
+                  <img
+                    src={getImageUrl(post.thumbnail)}
+                    alt={post.title}
+                    className="rounded-xl w-full h-48 object-cover mb-4"
+                  />
+                )}
+
+                <h3 className="text-xl font-semibold text-blue-600 mb-2">
+                  {post.title}
+                </h3>
+                <div
+                  className="text-gray-600 text-sm line-clamp-3"
+                  dangerouslySetInnerHTML={{ __html: post.excerpt }}
+                ></div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
       {/* 🔹 Footer */}
       <footer className="bg-gray-900 text-gray-400 py-6 text-center text-sm">
         © 2025 MyApp. All rights reserved.

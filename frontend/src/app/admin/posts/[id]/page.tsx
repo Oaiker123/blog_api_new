@@ -11,33 +11,77 @@ export default function PostDetailPage() {
   const { id } = useParams();
   const router = useRouter();
   const [post, setPost] = useState<any>(null);
+  const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
+  // 🟢 Lấy user hiện tại + bài viết
   useEffect(() => {
-    if (!id) return;
+    const fetchData = async () => {
+      try {
+        const [userRes, postRes] = await Promise.all([
+          api.get("/me"),
+          api.get(`/posts/${id}`),
+        ]);
 
-    api
-      .get(`/posts/${id}`)
-      .then((res) => {
-        const postData = res.data.post || res.data;
-        setPost(postData);
-      })
-      .catch(() => toast.error("Không thể tải bài viết"))
-      .finally(() => setLoading(false));
+        setUser(userRes.data);
+        setPost(postRes.data.post || postRes.data);
+      } catch {
+        toast.error("Không thể tải dữ liệu");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (id) fetchData();
   }, [id]);
 
-  const handleDelete = async () => {
-    if (!confirm("Bạn có chắc muốn xóa bài viết này?")) return;
+  // ✅ Hàm kiểm tra quyền
+  const hasPermission = (perm: string) => {
+    return user?.permissions?.includes(perm);
+  };
 
+  // ✅ Hàm xóa bài
+  const handleDelete = async () => {
     try {
       await api.delete(`/posts/${id}`);
-      toast.success("Đã xóa bài viết!");
+      toast.success("🗑️ Đã xóa bài viết!");
       router.push("/admin/posts");
     } catch {
       toast.error("Lỗi khi xóa bài viết");
     }
+  };
+
+  // ✅ Xác nhận xóa bằng toast.custom
+  const confirmDelete = () => {
+    toast.custom((t: any) => (
+      <div className="bg-white border rounded-lg p-4 shadow-lg space-y-3">
+        <p className="font-semibold text-red-600">
+          Xóa bài viết này?
+        </p>
+        <p className="text-sm text-gray-500">
+          Hành động này không thể hoàn tác.
+        </p>
+        <div className="flex justify-end gap-2">
+          <button
+            onClick={() => toast.dismiss(t.id)}
+            className="px-3 py-1 text-sm rounded-md border hover:bg-gray-100"
+          >
+            Hủy
+          </button>
+          <button
+            onClick={() => {
+              toast.dismiss(t.id);
+              handleDelete();
+            }}
+            className="px-3 py-1 text-sm rounded-md bg-red-600 text-white hover:bg-red-700"
+          >
+            Xóa
+          </button>
+        </div>
+      </div>
+    ));
   };
 
   // ✅ Chuẩn hóa đường dẫn ảnh
@@ -49,7 +93,6 @@ export default function PostDetailPage() {
     return `${base}/storage/${path}`;
   };
 
-  // ✅ Gallery chỉ lấy ảnh media (không bao gồm thumbnail)
   const getGalleryImages = () => {
     if (!post?.media?.length) return [];
     return post.media
@@ -103,30 +146,34 @@ export default function PostDetailPage() {
           >
             <ArrowLeft className="w-4 h-4 mr-1" /> Quay lại
           </button>
-    
         </div>
 
         <div className="flex gap-3">
-          <Link
-            href={`/admin/posts/${id}/edit`}
-            className="text-blue-600 hover:text-blue-800"
-            title="Chỉnh sửa"
-          >
-            <Edit />
-          </Link>
-          <button
-            onClick={handleDelete}
-            className="text-red-600 hover:text-red-800"
-            title="Xóa"
-          >
-            <Trash2 />
-          </button>
+          {hasPermission("edit posts") && (
+            <Link
+              href={`/admin/posts/${id}/edit`}
+              className="text-blue-600 hover:text-blue-800"
+              title="Chỉnh sửa"
+            >
+              <Edit />
+            </Link>
+          )}
+
+          {hasPermission("delete posts") && (
+            <button
+              onClick={confirmDelete}
+              className="text-red-600 hover:text-red-800"
+              title="Xóa"
+            >
+              <Trash2 />
+            </button>
+          )}
         </div>
       </div>
 
       <h1 className="text-2xl font-bold ml-3 mb-4">{post.title}</h1>
 
-      {/* 🖼️ Ảnh đại diện */}
+      {/* Ảnh đại diện */}
       {post.thumbnail && (
         <div className="mb-6 text-center">
           <img
@@ -134,18 +181,12 @@ export default function PostDetailPage() {
             alt={post.title}
             className="mx-auto w-auto max-w-[300px] h-auto max-h-[300px] rounded-lg border object-contain cursor-pointer"
             onClick={() => setPreviewImage(getImageUrl(post.thumbnail))}
-            onError={(e) => {
-              console.error("❌ Thumbnail lỗi:", post.thumbnail);
-              e.currentTarget.src = `${
-                process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
-              }/storage/${post.thumbnail}`;
-            }}
           />
           <p className="text-sm text-gray-500 mt-2">Ảnh đại diện</p>
         </div>
       )}
 
-      {/* 🖼️ Gallery ảnh */}
+      {/* Gallery ảnh */}
       {Array.isArray(galleryImages) && galleryImages.length > 0 && (
         <div className="mb-6">
           <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
@@ -163,12 +204,6 @@ export default function PostDetailPage() {
                   src={img.url}
                   alt={img.name}
                   className="w-full h-32 object-cover group-hover:scale-105 transition-transform duration-200"
-                  onError={(e) => {
-                    console.error("❌ Gallery lỗi:", img.url);
-                    e.currentTarget.src = `${
-                      process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
-                    }/storage/${img.url}`;
-                  }}
                 />
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-center justify-center">
                   <Eye className="w-5 h-5 text-white opacity-0 group-hover:opacity-100" />
@@ -255,29 +290,6 @@ export default function PostDetailPage() {
               className="max-w-full max-h-[80vh] object-contain mx-auto rounded-lg"
               onClick={(e) => e.stopPropagation()}
             />
-
-            {galleryImages.length > 1 && (
-              <>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    navigateImage("prev");
-                  }}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/30 text-white p-2 rounded-full"
-                >
-                  <ArrowLeft className="w-6 h-6" />
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    navigateImage("next");
-                  }}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/30 text-white p-2 rounded-full rotate-180"
-                >
-                  <ArrowLeft className="w-6 h-6" />
-                </button>
-              </>
-            )}
           </div>
         </div>
       )}
