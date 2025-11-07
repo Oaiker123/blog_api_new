@@ -207,7 +207,7 @@ export default function HomePage() {
             {posts.map((post) => (
               <div
                 key={post.id}
-                onClick={() => router.push(`/posts/${post.id}`)}
+                onClick={() => router.push(`/home/${post.id}`)}
                 className="cursor-pointer bg-gray-50 border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:-translate-y-1 transition-all p-6"
               >
                 {post.thumbnail && (

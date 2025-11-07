@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\API\ProfileController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\CommentController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\SocialAuthController;
 use Illuminate\Http\Request;
@@ -89,7 +90,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
 // 🟢 Public route: ai cũng xem được profile công khai
 Route::get('/profiles/{username}', [ProfileController::class, 'showByUsername']);
-
+Route::get('/profiles/user/{user_id}', [ProfileController::class, 'showByUserId']); // 👈 THÊM ROUTE MỚI
 
 // -----------------------------------
 // 📝 POSTS ROUTES (phân quyền theo role / permission)
@@ -103,8 +104,13 @@ Route::prefix('posts')->middleware('auth:sanctum')->group(function () {
     Route::put('/{id}', [PostController::class, 'update'])->middleware('permission:edit posts');
     Route::delete('/{id}', [PostController::class, 'destroy'])->middleware('permission:delete posts');
 
-    // Moderator: duyệt bài
+    // Moderator:duyệt bài
     Route::put('/{id}/approve', [PostController::class, 'approve'])->middleware('permission:approve posts');
+
+    // 💬 Bình luận (đặt đúng route)
+    Route::get('/{id}/comments', [PostController::class, 'getComments']);
+    Route::post('/{id}/comments', [PostController::class, 'addComment']);
+    Route::post('/comments/{id}/reply', [PostController::class, 'replyComment']);
 });
 
 Route::get('/categories', [CategoryController::class, 'index']);
@@ -142,6 +148,17 @@ Route::post('/upload', function (Request $request) {
     }
     return response()->json(['error' => ['message' => 'Không có file nào được upload']], 400);
 })->middleware('auth:sanctum');
+
+// -----------------------------------
+// 💬 COMMENTS ROUTES
+// -----------------------------------
+Route::prefix('comments')->group(function () {
+    // 🟢 Lấy danh sách bình luận theo post_id (public)
+    Route::get('/', [CommentController::class, 'index']);
+
+    // 🔐 Thêm bình luận (cần đăng nhập)
+    Route::middleware('auth:sanctum')->post('/', [CommentController::class, 'store']);
+});
 
 Route::get('/test', function () {
     return response()->json(['message' => 'Hello from Laravel!']);

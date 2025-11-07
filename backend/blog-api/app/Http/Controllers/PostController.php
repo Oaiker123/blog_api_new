@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Comment;
 use App\Models\Post;
 use App\Models\Media;
 use Illuminate\Http\Request;
@@ -225,4 +226,43 @@ class PostController extends Controller
             'post' => $post
         ]);
     }
+
+    public function getComments($id)
+    {
+        $comments = Comment::where('post_id', $id)
+            ->whereNull('parent_id')
+            ->with(['user', 'replies.user'])
+            ->latest()
+            ->get();
+
+        return response()->json($comments);
+    }
+
+    public function addComment(Request $request, $id)
+    {
+        $validated = $request->validate(['content' => 'required|string']);
+        $comment = \App\Models\Comment::create([
+            'user_id' => $request->user()->id,
+            'post_id' => $id,
+            'content' => $validated['content'],
+        ]);
+
+        return response()->json($comment->load('user'));
+    }
+
+    public function replyComment(Request $request, $commentId)
+    {
+        $validated = $request->validate(['content' => 'required|string']);
+        $parent = Comment::findOrFail($commentId);
+
+        $reply = Comment::create([
+            'user_id' => $request->user()->id,
+            'post_id' => $parent->post_id,
+            'parent_id' => $parent->id,
+            'content' => $validated['content'],
+        ]);
+
+        return response()->json($reply->load('user'));
+    }
+
 }

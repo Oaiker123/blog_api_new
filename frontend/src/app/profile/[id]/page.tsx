@@ -1,0 +1,403 @@
+"use client";
+
+import { useEffect, useState, useRef } from "react";
+import { useParams, useRouter } from "next/navigation";
+import {
+  Loader2,
+  User,
+  Edit,
+  Camera,
+  Trash2,
+  Facebook,
+  Linkedin,
+  Github,
+  Twitter,
+  Instagram,
+  Youtube,
+  Music,
+  Globe,
+  MapPin,
+  Phone,
+  Cake,
+  Users,
+  ArrowLeft,
+} from "lucide-react";
+import { api } from "@/lib/api";
+import { toast } from "sonner";
+
+function Card({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`bg-white border border-gray-200 rounded-2xl shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden ${className}`}
+    >
+      {children}
+    </div>
+  );
+}
+
+function CardContent({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return <div className={`p-8 ${className}`}>{children}</div>;
+}
+
+function Button({
+  children,
+  onClick,
+  variant = "default",
+  size = "md",
+  className = "",
+}: {
+  children: React.ReactNode;
+  onClick?: () => void;
+  variant?: "default" | "outline" | "danger";
+  size?: "sm" | "md";
+  className?: string;
+}) {
+  const base =
+    "rounded-xl font-medium transition flex items-center justify-center gap-2 focus:ring-2 focus:ring-offset-1";
+  const variants = {
+    default: "bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-400",
+    outline:
+      "border border-gray-300 text-gray-700 hover:bg-gray-50 focus:ring-gray-300",
+    danger: "bg-red-600 text-white hover:bg-red-700 focus:ring-red-400",
+  };
+  const sizes = {
+    sm: "px-3 py-1.5 text-sm",
+    md: "px-4 py-2 text-base",
+  };
+  return (
+    <button
+      onClick={onClick}
+      className={`${base} ${variants[variant]} ${sizes[size]} ${className}`}
+    >
+      {children}
+    </button>
+  );
+}
+
+export default function ProfilePage() {
+  const { id } = useParams();
+  const router = useRouter();
+  const [profile, setProfile] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const coverInputRef = useRef<HTMLInputElement>(null);
+
+  const defaultCover = "/image.png";
+  const defaultAvatar = "/avt/image.png";
+
+  useEffect(() => {
+    if (!id) return;
+
+    // Thử tìm profile bằng username trước, nếu không được thì dùng user_id
+    api
+      .get(`/profiles/user/${id}`)
+      .then((res) => {
+        setProfile(res.data.data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        // Nếu không tìm thấy bằng username, thử tìm bằng user_id
+        console.log("Không tìm thấy bằng username, thử tìm bằng user_id...");
+        api
+          .get(`/profiles/user/${id}`)
+          .then((res) => {
+            setProfile(res.data.data);
+            setLoading(false);
+          })
+          .catch((err2) => {
+            console.error("Lỗi khi tải profile:", err2);
+            setError("Không tìm thấy profile");
+            setLoading(false);
+          });
+      });
+  }, [id]);
+
+  const getImageUrl = (path: string) => {
+    if (!path) return "";
+    if (path.startsWith("http")) return path;
+    return `${
+      process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+    }/storage/${path}`;
+  };
+
+  const handleUpload = async (file: File, field: "avatar" | "cover") => {
+    if (!file) return;
+    setUploading(true);
+    const formData = new FormData();
+    formData.append(field, file);
+
+    try {
+      const res = await api.post("/user/profile?_method=PUT", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      setProfile(res.data.data);
+    } catch (err) {
+      console.error(err);
+      toast.error("Không thể tải ảnh lên. Vui lòng thử lại!");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleRemoveImage = async (field: "avatar" | "cover") => {
+    const isAvatar = field === "avatar";
+    const name = isAvatar ? "ảnh đại diện" : "ảnh bìa";
+
+    toast.info(`Bạn có chắc muốn gỡ ${name}?`, {
+      action: {
+        label: "Gỡ ảnh",
+        onClick: async () => {
+          setUploading(true);
+          const toastId = toast.loading("Đang gỡ ảnh...");
+          try {
+            const endpoint = isAvatar ? "/avatar" : "/cover";
+            await api.delete(endpoint);
+            setProfile((prev: any) => ({
+              ...prev,
+              [isAvatar ? "avatar_url" : "cover_url"]: null,
+            }));
+            toast.success(`Đã gỡ ${name}!`, { id: toastId });
+          } catch (err) {
+            console.error(err);
+            toast.error("Không thể gỡ ảnh. Vui lòng thử lại!", { id: toastId });
+          } finally {
+            setUploading(false);
+          }
+        },
+      },
+      duration: 4000,
+    });
+  };
+
+  if (loading)
+    return (
+      <div className="flex flex-col items-center justify-center h-[70vh] text-gray-500">
+        <Loader2 className="animate-spin w-8 h-8 mb-3 text-blue-500" />
+        <p>Đang tải dữ liệu...</p>
+      </div>
+    );
+
+  if (error)
+    return (
+      <div className="text-center text-red-500 py-20">
+        {error}
+        <div className="mt-4">
+          <Button onClick={() => router.back()} variant="outline">
+            <ArrowLeft className="w-4 h-4" /> Quay lại
+          </Button>
+        </div>
+      </div>
+    );
+
+  if (!profile)
+    return (
+      <div className="text-center text-gray-500 mt-20">
+        Không tìm thấy thông tin người dùng 😢
+        <div className="mt-4">
+          <Button onClick={() => router.back()} variant="outline">
+            <ArrowLeft className="w-4 h-4" /> Quay lại
+          </Button>
+        </div>
+      </div>
+    );
+
+  const coverUrl = profile.cover_url
+    ? getImageUrl(profile.cover_url)
+    : defaultCover;
+  const avatarUrl = profile.avatar_url
+    ? getImageUrl(profile.avatar_url)
+    : defaultAvatar;
+
+  return (
+    <div className="min-h-[85vh] bg-gray-50 py-10 px-4">
+      <div className="max-w-4xl mx-auto mb-6">
+        <h1 className="text-3xl font-semibold text-gray-800 flex items-center gap-2">
+          <User className="w-7 h-7 text-blue-600" />
+          Hồ sơ cá nhân
+        </h1>
+        <p className="text-gray-500 mt-1">
+          Thông tin chi tiết tài khoản của{" "}
+          {profile.display_name || profile.username}
+        </p>
+      </div>
+
+      <div className="max-w-4xl mx-auto">
+        <Card>
+          {/* Ảnh bìa */}
+          <div className="relative h-48 md:h-56 group">
+            <img
+              src={coverUrl}
+              alt="cover"
+              className="w-full h-full object-cover group-hover:brightness-95 transition"
+            />
+
+            {/* Avatar */}
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2">
+              <div className="relative">
+                <img
+                  src={avatarUrl}
+                  alt=""
+                  className="w-32 h-32 rounded-full border-4 border-white shadow-lg"
+                />
+              </div>
+            </div>
+          </div>
+
+          <CardContent className="pt-20">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-start">
+              {/* CỘT TRÁI */}
+              <div className="text-center md:text-left space-y-1">
+                <h2 className="text-3xl font-bold text-gray-900">
+                  {profile.display_name || "Chưa cập nhật"}
+                </h2>
+                <p className="text-gray-500 text-base">
+                  @{profile.username || "username"}
+                </p>
+                {profile.bio && (
+                  <p className="text-gray-600 italic mt-2 text-sm md:text-base">
+                    {profile.bio}
+                  </p>
+                )}
+
+                {/* Info */}
+                <div className="mt-6 flex flex-col gap-3 text-gray-700 text-[15px] leading-relaxed">
+                  {profile.location && (
+                    <p className="flex items-center gap-2 justify-center md:justify-start">
+                      <MapPin className="w-4 h-4 text-blue-600" />
+                      <span>{profile.location}</span>
+                    </p>
+                  )}
+                  {profile.phone && (
+                    <p className="flex items-center gap-2 justify-center md:justify-start">
+                      <Phone className="w-4 h-4 text-blue-600" />
+                      <a
+                        href={`tel:${profile.phone}`}
+                        className="hover:underline"
+                      >
+                        {profile.phone}
+                      </a>
+                    </p>
+                  )}
+                  {profile.birthdate && (
+                    <p className="flex items-center gap-2 justify-center md:justify-start">
+                      <Cake className="w-4 h-4 text-blue-600" />
+                      <span>
+                        {new Date(profile.birthdate).toLocaleDateString(
+                          "vi-VN"
+                        )}
+                      </span>
+                    </p>
+                  )}
+                  {profile.gender && (
+                    <p className="flex items-center gap-2 justify-center md:justify-start">
+                      <Users className="w-4 h-4 text-blue-600" />
+                      <span>
+                        {profile.gender === "male"
+                          ? "Nam"
+                          : profile.gender === "female"
+                          ? "Nữ"
+                          : "Khác"}
+                      </span>
+                    </p>
+                  )}
+                  {profile.website && (
+                    <p className="flex items-center gap-2 justify-center md:justify-start">
+                      <Globe className="w-4 h-4 text-blue-600" />
+                      <a
+                        href={profile.website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hover:underline text-blue-600"
+                      >
+                        {profile.website}
+                      </a>
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* CỘT PHẢI */}
+              <div className="flex flex-col md:items-end items-center">
+                <Button
+                  onClick={() => router.back()}
+                  variant="outline"
+                  className="self-end mb-6"
+                >
+                  <ArrowLeft className="w-4 h-4" /> Quay lại
+                </Button>
+
+                {profile.social_links && profile.social_links.length > 0 && (
+                  <div className="w-full">
+                    <h3 className="text-gray-800 font-semibold mb-4 flex items-center gap-2 justify-center md:justify-end">
+                      <Globe className="w-5 h-5 text-purple-600" />
+                      Liên kết mạng xã hội
+                    </h3>
+
+                    <div className="flex flex-wrap gap-4 justify-center md:justify-end">
+                      {profile.social_links.map((link: string, idx: number) => {
+                        let Icon = Globe;
+                        let color = "text-gray-600 hover:text-gray-800";
+                        if (link.includes("facebook.com")) {
+                          Icon = Facebook;
+                          color = "text-blue-600 hover:text-blue-700";
+                        } else if (link.includes("linkedin.com")) {
+                          Icon = Linkedin;
+                          color = "text-sky-600 hover:text-sky-700";
+                        } else if (link.includes("github.com")) {
+                          Icon = Github;
+                          color = "text-gray-800 hover:text-black";
+                        } else if (
+                          link.includes("twitter.com") ||
+                          link.includes("x.com")
+                        ) {
+                          Icon = Twitter;
+                          color = "text-sky-500 hover:text-sky-600";
+                        } else if (link.includes("instagram.com")) {
+                          Icon = Instagram;
+                          color = "text-pink-500 hover:text-pink-600";
+                        } else if (link.includes("youtube.com")) {
+                          Icon = Youtube;
+                          color = "text-red-600 hover:text-red-700";
+                        } else if (link.includes("tiktok.com")) {
+                          Icon = Music;
+                          color = "text-black hover:text-gray-700";
+                        }
+
+                        return (
+                          <a
+                            key={idx}
+                            href={link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title={link}
+                            className={`p-3 rounded-full border border-gray-200 hover:shadow-md transition-transform duration-200 hover:scale-110 bg-white ${color}`}
+                          >
+                            <Icon className="w-6 h-6" />
+                          </a>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}

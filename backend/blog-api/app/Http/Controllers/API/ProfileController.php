@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Models\Profile;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Storage;
@@ -175,6 +176,48 @@ class ProfileController extends Controller
                     'display_name' => $profile->display_name,
                     'bio' => $profile->bio,
                     'avatar_path' => $profile->avatar_path,
+                ]
+            ]);
+        }
+
+        return response()->json([
+            'message' => 'Public profile fetched successfully',
+            'data' => $this->formatProfile($profile)
+        ]);
+    }
+
+    /**
+     * 🌍 Xem profile công khai của người khác bằng user_id
+     */
+    public function showByUserId($user_id)
+    {
+        // Tìm profile theo user_id
+        $profile = Profile::where('user_id', $user_id)->first();
+
+        if (!$profile) {
+            // Nếu không tìm thấy profile, tạo profile mặc định
+            $user = User::find($user_id);
+            if (!$user) {
+                return response()->json(['message' => 'User not found'], 404);
+            }
+
+            $profile = Profile::create([
+                'user_id' => $user->id,
+                'username' => $user->name ?? 'user' . $user->id,
+                'display_name' => $user->name ?? 'Người dùng',
+                'bio' => 'Chưa có mô tả.',
+                'visibility' => 'public',
+            ]);
+        }
+
+        if ($profile->visibility === 'private') {
+            return response()->json([
+                'message' => 'Public profile fetched successfully (limited view)',
+                'data' => [
+                    'username' => $profile->username,
+                    'display_name' => $profile->display_name,
+                    'bio' => $profile->bio,
+                    'avatar_url' => $profile->avatar_path ? asset('storage/' . $profile->avatar_path) : null,
                 ]
             ]);
         }
