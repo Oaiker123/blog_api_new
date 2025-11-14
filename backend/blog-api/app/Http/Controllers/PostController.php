@@ -231,7 +231,10 @@ class PostController extends Controller
     {
         $comments = Comment::where('post_id', $id)
             ->whereNull('parent_id')
-            ->with(['user', 'replies.user'])
+            ->with([
+                'user.profile', // 🔥 THÊM DÒNG NÀY - load profile của user
+                'replies.user.profile' // 🔥 THÊM DÒNG NÀY - load profile cho replies
+            ])
             ->latest()
             ->get();
 
@@ -247,7 +250,7 @@ class PostController extends Controller
             'content' => $validated['content'],
         ]);
 
-        return response()->json($comment->load('user'));
+        return response()->json($comment->load('user.profile')); // 🔥 THÊM ->load('user.profile')
     }
 
     public function replyComment(Request $request, $commentId)
@@ -262,7 +265,7 @@ class PostController extends Controller
             'content' => $validated['content'],
         ]);
 
-        return response()->json($reply->load('user'));
+        return response()->json($reply->load('user.profile')); // 🔥 THÊM ->load('user.profile')
     }
 
 }
