@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\Comment;
 use App\Models\Post;
 use App\Models\Media;
+use App\Models\View;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 class PostController extends Controller
@@ -227,30 +229,104 @@ class PostController extends Controller
         ]);
     }
 
+    // 🟢 LẤY BÌNH LUẬN VỚI ẢNH
     public function getComments($id)
     {
-        $comments = Comment::where('post_id', $id)
-            ->whereNull('parent_id')
-            ->with([
-                'user.profile', // 🔥 THÊM DÒNG NÀY - load profile của user
-                'replies.user.profile' // 🔥 THÊM DÒNG NÀY - load profile cho replies
-            ])
-            ->latest()
-            ->get();
+        try {
+            $comments = Comment::where('post_id', $id)
+                ->whereNull('parent_id')
+                ->with([
+                    'user.profile',
+                    'media', // 👈 THÊM DÒNG NÀY
+                    'replies.user.profile',
+                    'replies.media' // 👈 VÀ DÒNG NÀY CHO REPLIES
+                ])
+                ->latest()
+                ->get();
 
-        return response()->json($comments);
+            \Log::info('📥 Fetched comments', [
+                'post_id' => $id,
+                'count' => $comments->count(),
+                'with_media' => true
+            ]);
+
+            return response()->json($comments);
+
+        } catch (\Exception $e) {
+            \Log::error('❌ Get comments error: ' . $e->getMessage());
+            return response()->json(['error' => 'Failed to fetch comments'], 500);
+        }
     }
 
+    // 🟢 THÊM BÌNH LUẬN VỚI ẢNH
     public function addComment(Request $request, $id)
     {
-        $validated = $request->validate(['content' => 'required|string']);
-        $comment = \App\Models\Comment::create([
-            'user_id' => $request->user()->id,
-            'post_id' => $id,
-            'content' => $validated['content'],
-        ]);
+        try {
+            $validated = $request->validate([
+                'content' => 'required|string',
+                'images.*' => 'nullable|image|max:5120', // 5MB
+            ]);
 
-        return response()->json($comment->load('user.profile')); // 🔥 THÊM ->load('user.profile')
+            Log::info('🔄 Creating comment', [
+                'post_id' => $id,
+                'user_id' => $request->user()->id,
+                'has_images' => $request->hasFile('images')
+            ]);
+
+            $comment = \App\Models\Comment::create([
+                'user_id' => $request->user()->id,
+                'post_id' => $id,
+                'content' => $validated['content'],
+            ]);
+
+            Log::info('✅ Comment created', ['comment_id' => $comment->id]);
+
+            // 🖼️ UPLOAD ẢNH NẾU CÓ
+            if ($request->hasFile('images')) {
+                $uploadedImages = [];
+
+                foreach ($request->file('images') as $file) {
+                    $path = $file->store('comments', 'public');
+
+                    $media = Media::create([
+                        'comment_id' => $comment->id, // 👈 QUAN TRỌNG
+                        'type' => 'image',
+                        'url' => $path,
+                        'caption' => null,
+                    ]);
+
+                    $uploadedImages[] = $media;
+                    Log::info('📸 Image uploaded', ['path' => $path, 'media_id' => $media->id]);
+                }
+
+                Log::info('✅ Images attached to comment', [
+                    'comment_id' => $comment->id,
+                    'image_count' => count($uploadedImages)
+                ]);
+            }
+
+            // 🔥 LOAD ĐẦY ĐỦ DỮ LIỆU ĐỂ TRẢ VỀ
+            $comment->load([
+                'user.profile',
+                'media', // 👈 LOAD ẢNH CỦA COMMENT
+                'replies.user.profile'
+            ]);
+
+            Log::info('📦 Final comment data', [
+                'comment_id' => $comment->id,
+                'media_count' => $comment->media->count(),
+                'user_loaded' => !!$comment->user
+            ]);
+
+            return response()->json($comment);
+
+        } catch (\Exception $e) {
+            Log::error('❌ Add comment error: ' . $e->getMessage());
+            return response()->json([
+                'error' => 'Failed to add comment',
+                'message' => $e->getMessage()
+            ], 500);
+        }
     }
 
     public function replyComment(Request $request, $commentId)
@@ -268,4 +344,98 @@ class PostController extends Controller
         return response()->json($reply->load('user.profile')); // 🔥 THÊM ->load('user.profile')
     }
 
+
+    // 🟢 Like/Unlike bài viết
+    public function toggleLike($id)
+    {
+        $user = auth()->user();
+        $post = Post::findOrFail($id);
+
+        // Kiểm tra user đã like chưa
+        $existingLike = $post->likes()->where('user_id', $user->id)->first();
+
+        if ($existingLike) {
+            // Nếu đã like rồi thì unlike
+            $existingLike->delete();
+            $message = 'Đã bỏ thích bài viết';
+            $liked = false;
+        } else {
+            // Nếu chưa like thì like
+            $post->likes()->create([
+                'user_id' => $user->id,
+                'type' => 'like'
+            ]);
+            $message = 'Đã thích bài viết';
+            $liked = true;
+        }
+
+        // Lấy số lượt like mới
+        $likesCount = $post->likes()->count();
+
+        return response()->json([
+            'message' => $message,
+            'liked' => $liked,
+            'likes_count' => $likesCount
+        ]);
+    }
+
+    // 🟢 Lấy trạng thái like của user
+    public function checkLike($id)
+    {
+        $user = auth()->user();
+        $post = Post::findOrFail($id);
+
+        $liked = $post->likes()->where('user_id', $user->id)->exists();
+        $likesCount = $post->likes()->count();
+
+        return response()->json([
+            'liked' => $liked,
+            'likes_count' => $likesCount
+        ]);
+    }
+
+
+    // 🟢 Theo dõi lượt xem
+    public function trackView($id)
+    {
+        $post = Post::findOrFail($id);
+        $user = auth()->user();
+        $ipAddress = request()->ip();
+
+        // Kiểm tra xem IP này đã xem bài viết chưa (trong 24h)
+        $recentView = View::where('post_id', $post->id)
+            ->where(function ($query) use ($user, $ipAddress) {
+                $query->where('ip_address', $ipAddress)
+                    ->orWhere('user_id', $user?->id);
+            })
+            ->where('created_at', '>=', now()->subDay())
+            ->first();
+
+        if (!$recentView) {
+            // Tạo view mới
+            View::create([
+                'post_id' => $post->id,
+                'user_id' => $user?->id,
+                'ip_address' => $ipAddress,
+            ]);
+        }
+
+        $viewsCount = $post->views()->count();
+
+        return response()->json([
+            'views_count' => $viewsCount,
+            'message' => 'View tracked successfully'
+        ]);
+    }
+
+    // 🟢 Lấy số lượt xem
+    public function getViews($id)
+    {
+        $post = Post::findOrFail($id);
+        $viewsCount = $post->views()->count();
+
+        return response()->json([
+            'views_count' => $viewsCount
+        ]);
+    }
 }

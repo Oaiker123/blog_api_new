@@ -111,6 +111,13 @@ Route::prefix('posts')->middleware('auth:sanctum')->group(function () {
     Route::get('/{id}/comments', [PostController::class, 'getComments']);
     Route::post('/{id}/comments', [PostController::class, 'addComment']);
     Route::post('/comments/{id}/reply', [PostController::class, 'replyComment']);
+
+    Route::post('/{id}/like', [PostController::class, 'toggleLike']);
+    Route::get('/{id}/like/status', [PostController::class, 'checkLike']);
+
+    // Thêm vào group posts
+    Route::post('/{id}/view', [PostController::class, 'trackView']);
+    Route::get('/{id}/views', [PostController::class, 'getViews']);
 });
 
 Route::get('/categories', [CategoryController::class, 'index']);

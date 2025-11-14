@@ -22,4 +22,14 @@ class Comment extends Model
     public function replies() {
         return $this->hasMany(Comment::class, 'parent_id');
     }
+
+    public function media()
+    {
+        return $this->hasMany(Media::class);
+    }
+
+    public function parent()
+    {
+        return $this->belongsTo(Comment::class, 'parent_id');
+    }
 }

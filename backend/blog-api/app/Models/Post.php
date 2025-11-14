@@ -41,4 +41,15 @@ class Post extends Model
     public function bookmarks() {
         return $this->hasMany(Bookmark::class);
     }
+
+    // Thêm vào Post model
+    public function views()
+    {
+        return $this->hasMany(View::class);
+    }
+
+    public function getViewsCountAttribute()
+    {
+        return $this->views()->count();
+    }
 }
