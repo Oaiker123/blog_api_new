@@ -8,7 +8,7 @@ type User = {
   name: string;
   email: string;
   roles: string[];
-  permissions?: any[];
+  permissions?: string[];
 };
 
 type CurrentUser = {
@@ -36,8 +36,9 @@ export default function UserList() {
   const fetchCurrentUser = async () => {
     try {
       const res = await api.get("/auth/me");
-      setCurrentUser(res.data.user || res.data);
-    } catch (err) {
+      const user: CurrentUser = res.data.user || res.data;
+      setCurrentUser(user);
+    } catch (err: unknown) {
       console.error("Không lấy được current user:", err);
       toast.error("Không thể lấy thông tin người dùng hiện tại!");
       setCurrentUser(null);
@@ -53,12 +54,13 @@ export default function UserList() {
     try {
       setLoading(true);
       const res = await api.get(`/admin/users?page=${pageNum}`);
-      setUsers(res.data.users || []);
+      const fetchedUsers: User[] = res.data.users || [];
+      setUsers(fetchedUsers);
       setMeta(res.data.meta || null);
-    } catch (err: any) {
-      console.error("Lỗi khi lấy users:", err.response?.data || err.message);
-      if (err.response?.status === 403) {
-        toast.error(err.response?.data?.message || "Bạn không có quyền xem danh sách người dùng!");
+    } catch (err: unknown) {
+      console.error("Lỗi khi lấy users:", err);
+      if (err instanceof Error) {
+        toast.error("Không thể tải danh sách người dùng!");
       } else {
         toast.error("Không thể tải danh sách người dùng!");
       }
@@ -82,11 +84,15 @@ export default function UserList() {
 
     try {
       setLoadingId(userId);
-      const res = await api.put(`/admin/users/${userId}/role`, { role: newRole });
+      const res = await api.put<{ message: string }>(`/admin/users/${userId}/role`, { role: newRole });
       toast.success(res.data.message || "Cập nhật role thành công!");
       await fetchUsers(page);
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Có lỗi xảy ra khi đổi role.");
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        toast.error(err.message || "Có lỗi xảy ra khi đổi role.");
+      } else {
+        toast.error("Có lỗi xảy ra khi đổi role.");
+      }
     } finally {
       setLoadingId(null);
     }

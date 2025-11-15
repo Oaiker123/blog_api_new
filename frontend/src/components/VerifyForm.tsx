@@ -1,4 +1,5 @@
 "use client";
+
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import axios from "axios";
@@ -84,8 +85,12 @@ export default function VerifyOtpPage() {
       localStorage.removeItem("tempOTP");
 
       setTimeout(() => router.push("/login"), 1500);
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Xác minh thất bại");
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        toast.error(err.response?.data?.message || "Xác minh thất bại");
+      } else {
+        toast.error("Xác minh thất bại");
+      }
     } finally {
       setLoading(false);
     }
@@ -106,8 +111,12 @@ export default function VerifyOtpPage() {
       );
       toast.success(res.data.message);
       setResendCooldown(30);
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Không thể gửi lại OTP");
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        toast.error(err.response?.data?.message || "Không thể gửi lại OTP");
+      } else {
+        toast.error("Không thể gửi lại OTP");
+      }
     } finally {
       setLoading(false);
     }
@@ -170,7 +179,7 @@ export default function VerifyOtpPage() {
         <p className="text-center text-sm text-gray-600 mt-4">
           Chưa có tài khoản?{" "}
           <button
-           type="button"
+            type="button"
             onClick={() => router.push("/register")}
             className="text-blue-600 hover:underline"
           >

@@ -1,6 +1,7 @@
 "use client";
+
 import { useState, useEffect } from "react";
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
@@ -22,10 +23,24 @@ const decrypt = (text: string) => {
   }
 };
 
+// ✅ Type form đăng ký
+type RegisterFormData = {
+  name: string;
+  email: string;
+  password: string;
+  password_confirmation: string;
+};
+
+// ✅ Type response API
+type RegisterResponse = {
+  user_id: string | number;
+  message: string;
+};
+
 export default function RegisterForm() {
   const router = useRouter();
 
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<RegisterFormData>({
     name: "",
     email: "",
     password: "",
@@ -33,16 +48,15 @@ export default function RegisterForm() {
   });
   const [loading, setLoading] = useState(false);
 
-  // 👁‍🗨 Trạng thái ẩn/hiện mật khẩu
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
-  // 🧩 Khi load trang: lấy dữ liệu từ localStorage để phục hồi form
+  // 🧩 Phục hồi form từ localStorage
   useEffect(() => {
     const saved = localStorage.getItem("registerForm");
     if (saved) {
       try {
-        const data = JSON.parse(saved);
+        const data: Partial<RegisterFormData> = JSON.parse(saved);
         setForm({
           name: data.name || "",
           email: data.email || "",
@@ -50,12 +64,12 @@ export default function RegisterForm() {
           password_confirmation: decrypt(data.password_confirmation || ""),
         });
       } catch {
-        // lỗi JSON -> bỏ qua
+        // JSON lỗi -> bỏ qua
       }
     }
   }, []);
 
-  // 💾 Mỗi lần form thay đổi thì lưu lại localStorage
+  // 💾 Lưu form vào localStorage
   useEffect(() => {
     localStorage.setItem(
       "registerForm",
@@ -68,26 +82,26 @@ export default function RegisterForm() {
   }, [form]);
 
   // ✅ Gửi form đăng ký
-  const handleRegister = async (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      const res = await axios.post(
+      const res = await axios.post<RegisterResponse>(
         "http://127.0.0.1:8000/api/auth/register",
         form
       );
       const { user_id, message } = res.data;
 
       toast.success(message);
-      // ✅ Xóa dữ liệu tạm sau khi đăng ký thành công
       localStorage.removeItem("registerForm");
 
       router.push(
         `/verify-otp?user_id=${user_id}&email=${encodeURIComponent(form.email)}`
       );
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Đăng ký thất bại");
+    } catch (err) {
+      const error = err as AxiosError<{ message?: string }>;
+      toast.error(error.response?.data?.message || "Đăng ký thất bại");
     } finally {
       setLoading(false);
     }
@@ -123,7 +137,7 @@ export default function RegisterForm() {
           required
         />
 
-        {/* Ô nhập mật khẩu */}
+        {/* Mật khẩu */}
         <div className="relative">
           <input
             type={showPassword ? "text" : "password"}
@@ -143,7 +157,7 @@ export default function RegisterForm() {
           </button>
         </div>
 
-        {/* Ô nhập xác nhận mật khẩu */}
+        {/* Xác nhận mật khẩu */}
         <div className="relative">
           <input
             type={showConfirm ? "text" : "password"}

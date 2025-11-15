@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { motion } from "framer-motion";
-import { FaGoogle, FaFacebookF } from "react-icons/fa";
+import { FaGoogle } from "react-icons/fa";
 import { HiEye, HiEyeOff } from "react-icons/hi";
 import { toast } from "sonner";
 
@@ -23,6 +23,27 @@ const decrypt = (text: string) => {
   } catch {
     return text;
   }
+};
+
+// ✅ Type cho Role và User
+type Role = { name?: string } | string;
+
+type User = {
+  roles?: Role[];
+  permissions?: string[];
+  [key: string]: unknown; // Không dùng any nữa
+};
+
+// ✅ Type cho lỗi API
+type ApiError = {
+  response?: {
+    status?: number;
+    data?: {
+      message?: string;
+      user_id?: string | number;
+      email?: string;
+    };
+  };
 };
 
 export default function LoginPage() {
@@ -53,7 +74,7 @@ export default function LoginPage() {
   }, [password]);
 
   // ✅ Đăng nhập thủ công
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
 
@@ -76,8 +97,7 @@ export default function LoginPage() {
           const token = data.token ?? data.access_token ?? data.accessToken;
 
           if (token) localStorage.setItem("token", token);
-          if (data.user)
-            localStorage.setItem("user", JSON.stringify(data.user));
+          if (data.user) localStorage.setItem("user", JSON.stringify(data.user));
 
           if (rememberMe) {
             localStorage.setItem("rememberMe", "true");
@@ -89,9 +109,14 @@ export default function LoginPage() {
             localStorage.removeItem("rememberMe");
           }
 
-          const roleNames =
-            data.user?.roles?.map((r: any) => r.name || r) || [];
-          const permissionNames = data.user?.permissions || [];
+          const roleNames: string[] =
+            (data.user?.roles?.map((r: Role) =>
+              typeof r === "string" ? r : r.name || ""
+            ) || []).filter(Boolean);
+
+          const permissionNames: string[] = Array.isArray(data.user?.permissions)
+            ? (data.user.permissions as string[])
+            : [];
 
           const canAccessAdmin =
             roleNames.includes("Super Admin") ||
@@ -100,13 +125,14 @@ export default function LoginPage() {
           router.push(canAccessAdmin ? "/admin/dashboard" : "/home");
           return data.message || "✅ Đăng nhập thành công!";
         },
-        error: (err) => {
-          const status = err.response?.status;
-          const msg = err.response?.data?.message || "Đăng nhập thất bại!";
+        error: (err: unknown) => {
+          const e = err as ApiError;
+          const status = e.response?.status;
+          const msg = e.response?.data?.message || "Đăng nhập thất bại!";
 
           if (status === 403 || msg.toLowerCase().includes("chưa xác minh")) {
-            const user_id = err.response?.data?.user_id;
-            const pendingEmail = err.response?.data?.email || email;
+            const user_id = e.response?.data?.user_id;
+            const pendingEmail = e.response?.data?.email || email;
 
             localStorage.setItem("pendingEmail", pendingEmail);
             if (user_id) localStorage.setItem("pendingUserId", String(user_id));
@@ -130,7 +156,7 @@ export default function LoginPage() {
     );
   };
 
-  // 🟣 Đăng nhập Google/Facebook
+  // 🟣 Đăng nhập Google
   const handleSocialLogin = (provider: string) => {
     toast.loading(`🔄 Đang chuyển hướng đến ${provider}...`);
     window.location.href = `http://localhost:8000/api/auth/${provider}/redirect`;
@@ -140,25 +166,31 @@ export default function LoginPage() {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get("token");
-    const user = urlParams.get("user");
+    const userStr = urlParams.get("user");
 
-    if (token && user) {
+    if (token && userStr) {
       try {
         localStorage.setItem("token", token);
-        localStorage.setItem("user", user);
+        localStorage.setItem("user", userStr);
         toast.success("🎉 Đăng nhập thành công!");
 
-        const parsedUser = JSON.parse(user);
-        const roleNames = parsedUser?.roles?.map((r: any) => r.name || r) || [];
-        const permissionNames = parsedUser?.permissions || [];
+        const parsedUser = JSON.parse(userStr) as User;
+        const roleNames: string[] =
+          (parsedUser?.roles?.map((r: Role) =>
+            typeof r === "string" ? r : r.name || ""
+          ) || []).filter(Boolean);
+
+        const permissionNames: string[] = Array.isArray(parsedUser?.permissions)
+          ? (parsedUser.permissions as string[])
+          : [];
 
         const canAccessAdmin =
           roleNames.includes("Super Admin") ||
           permissionNames.includes("access-admin");
 
         router.push(canAccessAdmin ? "/admin/dashboard" : "/home");
-      } catch (e) {
-        console.error("❌ Lỗi parse user:", e);
+      } catch (err) {
+        console.error("❌ Lỗi parse user:", err);
         toast.error("Dữ liệu đăng nhập không hợp lệ!");
         router.push("/login");
       }
@@ -181,7 +213,9 @@ export default function LoginPage() {
           <input
             type="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              setEmail(e.target.value)
+            }
             required
             className="w-full border px-3 py-2 rounded"
             placeholder="example@gmail.com"
@@ -193,7 +227,9 @@ export default function LoginPage() {
           <input
             type={showPassword ? "text" : "password"}
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              setPassword(e.target.value)
+            }
             required
             className="w-full border px-3 py-2 rounded-lg pr-11 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
             placeholder="••••••••"
@@ -214,7 +250,9 @@ export default function LoginPage() {
             <input
               type="checkbox"
               checked={rememberMe}
-              onChange={(e) => setRememberMe(e.target.checked)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                setRememberMe(e.target.checked)
+              }
               className="w-4 h-4"
             />
             Ghi nhớ đăng nhập
@@ -265,12 +303,6 @@ export default function LoginPage() {
         >
           <FaGoogle className="mr-2 text-red-500" /> Đăng nhập với Google
         </button>
-        {/* <button
-          onClick={() => handleSocialLogin("facebook")}
-          className="flex items-center justify-center w-full border py-2 rounded hover:bg-gray-100 transition"
-        >
-          <FaFacebookF className="mr-2 text-blue-600" /> Đăng nhập với Facebook
-        </button> */}
       </div>
     </div>
   );

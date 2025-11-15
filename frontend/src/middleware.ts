@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-export function middleware(req: NextRequest) {
+export function middleware(_req: NextRequest) {
   // Nếu truy cập /admin mà không có localStorage thì thôi kệ (để client xử lý)
   // => Không redirect ở đây
   return NextResponse.next();

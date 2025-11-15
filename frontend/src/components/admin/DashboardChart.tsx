@@ -2,9 +2,20 @@
 
 import { useEffect, useState } from "react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
-import { api } from "@/lib/api"; // ✅ file axios instance của bạn
+import type { PieLabelRenderProps } from "recharts";
+import { api } from "@/lib/api";
 
+// ====== TYPES ======
+interface UserType {
+  name?: string;
+  email?: string;
+  role?: string[];
+  permissions?: string[];
+}
+
+// ====== PIE DATA ======
 const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042"];
+
 const pieData = [
   { name: "Người dùng", value: 400 },
   { name: "Bài viết", value: 300 },
@@ -12,12 +23,19 @@ const pieData = [
   { name: "Khác", value: 100 },
 ];
 
-const renderCustomizedLabel = ({ name, percent }: any) =>
-  `${name} ${(percent * 100).toFixed(0)}%`;
+// ====== LABEL RENDER (đúng chuẩn TS) ======
+const renderCustomizedLabel = (props: PieLabelRenderProps) => {
+  const { name, percent } = props;
+
+  if (typeof name !== "string") return "";
+  if (typeof percent !== "number") return "";
+
+  return `${name} ${(percent * 100).toFixed(0)}%`;
+};
 
 export default function DashboardChart() {
-  const [user, setUser] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<UserType | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -26,9 +44,7 @@ export default function DashboardChart() {
         if (!token) return;
 
         const res = await api.get("/auth/me", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Authorization: `Bearer ${token}` },
         });
 
         setUser(res.data.user);
@@ -52,31 +68,28 @@ export default function DashboardChart() {
 
         {loading ? (
           <p className="text-gray-500">Đang tải thông tin...</p>
-        ) : (
-          user && (
-            <div className="space-y-2 text-gray-700">
-              <p>
-                <span className="font-medium">Email:</span> {user.email}
-              </p>
-              <p>
-                <span className="font-medium">Vai trò:</span>{" "}
-                {user.role?.join(", ") || "Không có"}
-              </p>
-              <div>
-                <span className="font-medium">Quyền:</span>
-                <ul className="list-disc list-inside text-sm mt-1">
-                  {user.permissions?.length ? (
-                    user.permissions.map((p: string, i: number) => (
-                      <li key={i}>{p}</li>
-                    ))
-                  ) : (
-                    <li>Không có quyền nào</li>
-                  )}
-                </ul>
-              </div>
+        ) : user ? (
+          <div className="space-y-2 text-gray-700">
+            <p>
+              <span className="font-medium">Email:</span> {user.email}
+            </p>
+            <p>
+              <span className="font-medium">Vai trò:</span>{" "}
+              {user.role?.join(", ") || "Không có"}
+            </p>
+
+            <div>
+              <span className="font-medium">Quyền:</span>
+              <ul className="list-disc list-inside text-sm mt-1">
+                {user.permissions?.length ? (
+                  user.permissions.map((p, i) => <li key={i}>{p}</li>)
+                ) : (
+                  <li>Không có quyền nào</li>
+                )}
+              </ul>
             </div>
-          )
-        )}
+          </div>
+        ) : null}
       </div>
 
       {/* Card thống kê */}
@@ -96,7 +109,7 @@ export default function DashboardChart() {
                 cy="50%"
                 outerRadius={100}
                 label={renderCustomizedLabel}
-                isAnimationActive={true}
+                isAnimationActive
                 animationDuration={1200}
               >
                 {pieData.map((_, index) => (
