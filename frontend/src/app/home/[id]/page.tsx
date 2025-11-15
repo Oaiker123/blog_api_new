@@ -21,6 +21,72 @@ import {
   Paperclip,
 } from "lucide-react";
 
+// ✅ THÊM INTERFACE
+interface User {
+  id: number;
+  name?: string;
+  username?: string;
+  email?: string;
+  profile?: {
+    avatar_url?: string;
+    avatar_path?: string;
+  };
+  avatar_url?: string;
+  avatar?: string;
+  image?: string;
+  profile_picture?: string;
+  avatar_path?: string;
+}
+
+interface Media {
+  id: number;
+  url: string;
+  type: string;
+  name?: string;
+}
+
+interface Comment {
+  id: number;
+  content: string;
+  created_at: string;
+  user: User;
+  media?: Media[];
+  replies?: Comment[];
+}
+
+interface Category {
+  id: number;
+  name: string;
+}
+
+interface Tag {
+  id: number;
+  name: string;
+}
+
+interface Post {
+  id: number;
+  title: string;
+  content: string;
+  excerpt?: string;
+  thumbnail?: string;
+  status: string;
+  created_at: string;
+  user?: User;
+  category?: Category;
+  tags?: Tag[];
+  media?: Media[];
+}
+
+interface ApiError {
+  response?: {
+    data?: {
+      message?: string;
+      errors?: Record<string, string[]>;
+    };
+  };
+}
+
 /* ------------------------------------------------------------
  * 🔧 Helpers
  * ------------------------------------------------------------ */
@@ -33,7 +99,7 @@ const getImageUrl = (path?: string) => {
   }/storage/${path}`;
 };
 
-const getAvatarForUser = (user?: any) => {
+const getAvatarForUser = (user?: User) => {
   if (!user) return defaultAvatar;
 
   if (user.profile) {
@@ -49,7 +115,7 @@ const getAvatarForUser = (user?: any) => {
     "avatar_path",
   ];
   for (const k of rootKeys) {
-    if (user[k]) return getImageUrl(user[k]);
+    if (user[k as keyof User]) return getImageUrl(user[k as keyof User] as string);
   }
 
   return defaultAvatar;
@@ -128,7 +194,7 @@ const CommentForm = ({
 }: { 
   onSubmit: (content: string, images?: File[]) => void;
   submitting: boolean;
-  currentUser: any;
+  currentUser: User | null;
   placeholder?: string;
   autoFocus?: boolean;
   onCancel?: () => void;
@@ -218,7 +284,7 @@ const CommentForm = ({
         {/* Header với avatar và info */}
         <div className="flex items-center gap-3 mb-3">
           <img
-            src={getAvatarForUser(currentUser)}
+            src={getAvatarForUser(currentUser || undefined)}
             alt="Avatar"
             className="w-8 h-8 rounded-full object-cover border-2 border-white shadow-sm"
             onError={(e) => ((e.target as HTMLImageElement).src = defaultAvatar)}
@@ -365,14 +431,14 @@ const CommentItem = ({
   comment,
   currentUser,
 }: {
-  comment: any;
-  currentUser: any;
+  comment: Comment;
+  currentUser: User | null;
 }) => {
   const router = useRouter();
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [submittingReply, setSubmittingReply] = useState(false);
 
-  const handleProfileClick = (user: any) => {
+  const handleProfileClick = (user: User) => {
     if (!user) return;
     if (user.username) router.push(`/profile/${user.username}`);
     else if (user.id) router.push(`/profile/${user.id}`);
@@ -406,16 +472,17 @@ const CommentItem = ({
       
       // Reload comments để cập nhật UI
       window.location.reload();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('❌ Reply error:', error);
-      alert(error.response?.data?.message || "Gửi phản hồi thất bại");
+      const err = error as ApiError;
+      alert(err.response?.data?.message || "Gửi phản hồi thất bại");
     } finally {
       setSubmittingReply(false);
     }
   };
 
   // Hiển thị ảnh trong comment
-  const renderCommentImages = (comment: any) => {
+  const renderCommentImages = (comment: Comment) => {
     const images = comment.media || [];
     
     if (images.length === 0) return null;
@@ -425,7 +492,7 @@ const CommentItem = ({
         images.length === 1 ? 'grid-cols-1' : 
         images.length === 2 ? 'grid-cols-2' : 'grid-cols-2'
       }`}>
-        {images.map((image: any, index: number) => (
+        {images.map((image: Media, index: number) => (
           <div key={index} className="relative">
             <img
               src={getImageUrl(image.url)}
@@ -508,9 +575,9 @@ const CommentItem = ({
           )}
 
           {/* Replies */}
-          {comment.replies?.length > 0 && (
+          {comment.replies && comment.replies.length > 0 && (
             <div className="mt-4 space-y-3 pl-4 border-l-2 border-blue-100">
-              {comment.replies.map((rep: any) => (
+              {comment.replies.map((rep: Comment) => (
                 <div key={rep.id} className="flex gap-3 pt-3 first:pt-0">
                   <img
                     src={getAvatarForUser(rep.user)}
@@ -537,7 +604,7 @@ const CommentItem = ({
                     {/* Reply images */}
                     {rep.media && rep.media.length > 0 && (
                       <div className="mt-2 grid grid-cols-2 gap-2">
-                        {rep.media.map((image: any, index: number) => (
+                        {rep.media.map((image: Media, index: number) => (
                           <img
                             key={index}
                             src={getImageUrl(image.url)}
@@ -622,11 +689,11 @@ export default function PostDetailPage() {
   const { id } = useParams();
   const router = useRouter();
 
-  const [post, setPost] = useState<any | null>(null);
-  const [comments, setComments] = useState<any[]>([]);
-  const [relatedPosts, setRelatedPosts] = useState<any[]>([]);
-  const [latestPosts, setLatestPosts] = useState<any[]>([]);
-  const [currentUser, setCurrentUser] = useState<any | null>(null);
+  const [post, setPost] = useState<Post | null>(null);
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [relatedPosts, setRelatedPosts] = useState<Post[]>([]);
+  const [latestPosts, setLatestPosts] = useState<Post[]>([]);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   
   // 🔥 STATE CHO LIKE
   const [isLiked, setIsLiked] = useState(false);
@@ -655,10 +722,11 @@ export default function PostDetailPage() {
       const response = await api.post(`/posts/${id}/view`);
       console.log('✅ View tracked successfully:', response.data);
       setViewsCount(response.data.views_count);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('❌ View tracking error:', error);
-      if (error.response?.data) {
-        console.error('Error details:', error.response.data);
+      const err = error as ApiError;
+      if (err.response?.data) {
+        console.error('Error details:', err.response.data);
       }
     } finally {
       setIsTrackingView(false);
@@ -730,9 +798,10 @@ export default function PostDetailPage() {
           console.log('⚠️ Could not load related posts');
         }
 
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('❌ Error fetching post:', error);
-        setError(error.response?.data?.message || "Không thể tải bài viết này.");
+        const err = error as ApiError;
+        setError(err.response?.data?.message || "Không thể tải bài viết này.");
       } finally {
         setLoading(false);
       }
@@ -774,15 +843,16 @@ export default function PostDetailPage() {
       setIsLiked(liked);
       setLikesCount(likes_count);
       
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('❌ Like error:', error);
+      const err = error as ApiError;
       
       // Revert optimistic update on error
       setIsLiked(previousLiked);
       setLikesCount(previousCount);
       
-      if (error.response?.data?.message) {
-        alert(error.response.data.message);
+      if (err.response?.data?.message) {
+        alert(err.response.data.message);
       } else {
         alert("Có lỗi xảy ra khi thích bài viết!");
       }
@@ -834,10 +904,11 @@ export default function PostDetailPage() {
         console.error('❌ No data in response');
       }
       
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('❌ Comment error:', error);
-      console.error('❌ Error response:', error.response?.data);
-      alert(error.response?.data?.message || "Gửi bình luận thất bại");
+      const err = error as ApiError;
+      console.error('❌ Error response:', err.response?.data);
+      alert(err.response?.data?.message || "Gửi bình luận thất bại");
     } finally {
       setSubmittingComment(false);
     }
@@ -1148,8 +1219,8 @@ export default function PostDetailPage() {
             <div>
               <h3 className="text-sm font-semibold text-gray-700 mb-2">Tags</h3>
               <div className="flex flex-wrap gap-2">
-                {post.tags?.length > 0 ? (
-                  post.tags.map((tag: any) => (
+                {post.tags && post.tags.length > 0 ? (
+                  post.tags.map((tag: Tag) => (
                     <span
                       key={tag.id}
                       className="px-3 py-1 bg-gradient-to-r from-blue-50 to-blue-100 text-blue-700 text-sm rounded-full hover:from-blue-100 hover:to-blue-200 cursor-pointer transition-all duration-300 border border-blue-200 hover:border-blue-300 hover:scale-105"

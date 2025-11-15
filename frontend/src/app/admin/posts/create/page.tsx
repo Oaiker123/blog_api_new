@@ -9,6 +9,22 @@ import { toast } from "sonner";
 import { CKEditor } from "@ckeditor/ckeditor5-react";
 import ClassicEditor from "@ckeditor/ckeditor5-build-classic";
 
+// ✅ THÊM INTERFACE
+interface Category {
+  id: number;
+  name: string;
+}
+
+interface ApiError {
+  response?: {
+    status?: number;
+    data?: {
+      errors?: Record<string, string[]>;
+      message?: string;
+    };
+  };
+}
+
 export default function CreatePostPage() {
   const router = useRouter();
 
@@ -24,7 +40,7 @@ export default function CreatePostPage() {
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
   const [status, setStatus] = useState("draft");
-  const [categories, setCategories] = useState<any[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [saving, setSaving] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
@@ -228,16 +244,20 @@ export default function CreatePostPage() {
 
       toast.success("✅ Bài viết đã được tạo thành công!");
       router.push("/admin/posts");
-    } catch (error: any) {
-      console.error("❌ API Error:", error.response?.data || error.message);
+    } catch (err: unknown) {
+      console.error("❌ API Error:", err);
 
+      const error = err as ApiError;
+      
       if (error.response?.status === 422) {
-        const messages = Object.values(error.response.data.errors || {})
+        const messages = Object.values(error.response.data?.errors || {})
           .flat()
           .join("\n");
         toast.error(messages || "Lỗi xác thực dữ liệu!");
       } else {
-        toast.error(error.response?.data?.message || "Không thể tạo bài viết");
+        toast.error(
+          error.response?.data?.message || "Không thể tạo bài viết"
+        );
       }
     } finally {
       setSaving(false);
@@ -296,6 +316,7 @@ export default function CreatePostPage() {
           <label className="font-medium">Nội dung</label>
           <div className="border rounded-lg mt-1 p-2 bg-white">
             <CKEditor
+              // @ts-ignore
               editor={ClassicEditor}
               data={content}
               // @ts-ignore
@@ -318,7 +339,8 @@ export default function CreatePostPage() {
                   "imageUpload",
                 ],
                 ckfinder: {
-                  uploadUrl: "http://127.0.0.1:8000/api/upload", // route Laravel
+                  uploadUrl: "http://127.0.0.1:8000/api/upload",
+                  // @ts-ignore
                   headers: {
                     Authorization: `Bearer ${localStorage.getItem("token")}`,
                   },

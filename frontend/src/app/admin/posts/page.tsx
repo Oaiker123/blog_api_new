@@ -6,8 +6,23 @@ import { Loader2, CheckCircle, Trash2, Eye } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 
+// ✅ THÊM INTERFACE
+interface User {
+  id: number;
+  name: string;
+  email: string;
+}
+
+interface Post {
+  id: number;
+  title: string;
+  excerpt: string;
+  status: string;
+  user?: User;
+}
+
 export default function AdminPostsPage() {
-  const [posts, setPosts] = useState<any[]>([]);
+  const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [permissions, setPermissions] = useState<string[]>([]);
 
@@ -64,19 +79,19 @@ export default function AdminPostsPage() {
 
   // ✅ Xác nhận duyệt
   const confirmApprove = (id: number) => {
-    toast.custom((t: any) => (
+    toast.custom((t) => (
       <div className="bg-white border rounded-lg p-4 shadow-lg space-y-3">
         <p className="font-semibold">Xác nhận duyệt bài viết?</p>
         <div className="flex justify-end gap-2">
           <button
-            onClick={() => toast.dismiss(t.id)}
+            onClick={() => toast.dismiss(t)}
             className="px-3 py-1 text-sm rounded-md border hover:bg-gray-100"
           >
             Hủy
           </button>
           <button
             onClick={() => {
-              toast.dismiss(t.id);
+              toast.dismiss(t);
               handleApprove(id);
             }}
             className="px-3 py-1 text-sm rounded-md bg-green-600 text-white hover:bg-green-700"
@@ -90,20 +105,20 @@ export default function AdminPostsPage() {
 
   // ✅ Xác nhận xóa
   const confirmDelete = (id: number) => {
-    toast.custom((t: any) => (
+    toast.custom((t) => (
       <div className="bg-white border rounded-lg p-4 shadow-lg space-y-3">
         <p className="font-semibold text-red-600">Xóa bài viết này?</p>
         <p className="text-sm text-gray-500">Hành động này không thể hoàn tác.</p>
         <div className="flex justify-end gap-2">
           <button
-            onClick={() => toast.dismiss(t.id)}
+            onClick={() => toast.dismiss(t)}
             className="px-3 py-1 text-sm rounded-md border hover:bg-gray-100"
           >
             Hủy
           </button>
           <button
             onClick={() => {
-              toast.dismiss(t.id);
+              toast.dismiss(t);
               handleDelete(id);
             }}
             className="px-3 py-1 text-sm rounded-md bg-red-600 text-white hover:bg-red-700"

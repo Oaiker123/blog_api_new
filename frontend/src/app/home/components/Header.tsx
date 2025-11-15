@@ -7,7 +7,19 @@ import { toast } from "sonner";
 import { api } from "@/lib/api";
 import Image from "next/image";
 
-const menuItems = [
+// ✅ THÊM INTERFACE
+interface UserProfile {
+  avatar_url: string;
+  name?: string;
+  email?: string;
+}
+
+interface MenuItem {
+  label: string;
+  path: string;
+}
+
+const menuItems: MenuItem[] = [
   { label: "Trang chủ", path: "/home" },
   { label: "Bài viết", path: "/posts" },
   { label: "Người dùng", path: "/users" },
@@ -17,22 +29,19 @@ export default function Header() {
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const [isClient, setIsClient] = useState(false); // ✅ mới thêm
+  const [isClient, setIsClient] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [hidden, setHidden] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
 
-  // DÒNG CẦN THÊM: State để lưu avatar URL
-  const [userProfile, setUserProfile] = useState<{ avatar_url: string } | null>(
-    null
-  );
-  const defaultAvatar = "/avt/image.png"; // Dùng lại default avatar của bạn
+  // ✅ SỬA THÀNH ĐÚNG TYPE
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const defaultAvatar = "/avt/image.png";
 
-  // Function để fetch profile (có thể tái sử dụng từ ProfilePage)
+  // ✅ SỬA FUNCTION VỚI ĐÚNG TYPE
   const fetchUserProfile = () => {
-    // Chỉ fetch nếu đã đăng nhập
     if (!localStorage.getItem("token")) return;
 
     api
@@ -40,14 +49,15 @@ export default function Header() {
       .then((res) => {
         setUserProfile(res.data.data);
       })
-      .catch((err) => {
+      .catch((err: unknown) => {
         console.error("Error fetching user profile in header:", err);
       });
   };
 
   useEffect(() => {
-    setIsClient(true); // ✅ đánh dấu đã chạy bên client
+    setIsClient(true);
     const handleResize = () => setIsMobile(window.innerWidth < 768);
+    
     const handleScroll = (() => {
       let lastScroll = 0;
       return () => {
@@ -62,7 +72,6 @@ export default function Header() {
     const token = localStorage.getItem("token");
     setIsLoggedIn(!!token);
 
-    // DÒNG CẦN THÊM: Gọi API để lấy profile
     if (!!token) {
       fetchUserProfile();
     }
@@ -87,16 +96,17 @@ export default function Header() {
     };
   }, []);
 
+  // ✅ SỬA ERROR TYPE
   const handleLogout = async () => {
     try {
       await api.post("/auth/logout");
       localStorage.removeItem("token");
       localStorage.removeItem("user");
       setIsLoggedIn(false);
-      setUserProfile(null); // <== DÒNG CẦN THÊM: Xóa profile
+      setUserProfile(null);
       toast.success("✅ Đăng xuất thành công!");
       router.push("/login");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
       toast.error("❌ Lỗi khi đăng xuất!");
     }
@@ -104,7 +114,6 @@ export default function Header() {
 
   const handleAuthRedirect = () => router.push("/login");
 
-  // ❗ Chưa mount client thì không render (tránh nhảy layout)
   if (!isClient) return null;
 
   return (
@@ -187,7 +196,6 @@ export default function Header() {
                   className="flex items-center gap-2 focus:outline-none group"
                 >
                   <img
-                    // DÒNG CẦN CHỈNH SỬA
                     src={userProfile?.avatar_url || defaultAvatar}
                     alt="Avatar"
                     className="w-10 h-10 rounded-full border-2 border-blue-100 group-hover:border-blue-400 transition-all duration-200"

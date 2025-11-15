@@ -24,13 +24,43 @@ import { api } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
-function Card({
-  children,
-  className = "",
-}: {
+// ✅ THÊM INTERFACE
+interface Profile {
+  id: number;
+  username: string;
+  display_name?: string;
+  bio?: string;
+  location?: string;
+  phone?: string;
+  birthdate?: string;
+  gender?: string;
+  website?: string;
+  avatar_url?: string;
+  cover_url?: string;
+  social_links?: string[];
+  created_at?: string;
+  updated_at?: string;
+}
+
+interface CardProps {
   children: React.ReactNode;
   className?: string;
-}) {
+}
+
+interface CardContentProps {
+  children: React.ReactNode;
+  className?: string;
+}
+
+interface ButtonProps {
+  children: React.ReactNode;
+  onClick?: () => void;
+  variant?: "default" | "outline" | "danger";
+  size?: "sm" | "md";
+  className?: string;
+}
+
+function Card({ children, className = "" }: CardProps) {
   return (
     <div
       className={`bg-white border border-gray-200 rounded-2xl shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden ${className}`}
@@ -40,13 +70,7 @@ function Card({
   );
 }
 
-function CardContent({
-  children,
-  className = "",
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
+function CardContent({ children, className = "" }: CardContentProps) {
   return <div className={`p-8 ${className}`}>{children}</div>;
 }
 
@@ -56,13 +80,7 @@ function Button({
   variant = "default",
   size = "md",
   className = "",
-}: {
-  children: React.ReactNode;
-  onClick?: () => void;
-  variant?: "default" | "outline" | "danger";
-  size?: "sm" | "md";
-  className?: string;
-}) {
+}: ButtonProps) {
   const base =
     "rounded-xl font-medium transition flex items-center justify-center gap-2 focus:ring-2 focus:ring-offset-1";
   const variants = {
@@ -86,7 +104,7 @@ function Button({
 }
 
 export default function ProfilePage() {
-  const [profile, setProfile] = useState<any>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
@@ -105,7 +123,7 @@ export default function ProfilePage() {
     api
       .get("/user/profile")
       .then((res) => setProfile(res.data.data))
-      .catch((err) => console.error(err))
+      .catch((err: unknown) => console.error(err))
       .finally(() => setLoading(false));
   };
 
@@ -120,7 +138,7 @@ export default function ProfilePage() {
         headers: { "Content-Type": "multipart/form-data" },
       });
       setProfile(res.data.data);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error(err);
       toast.error("Không thể tải ảnh lên. Vui lòng thử lại!");
     } finally {
@@ -141,12 +159,12 @@ export default function ProfilePage() {
           try {
             const endpoint = isAvatar ? "/avatar" : "/cover";
             await api.delete(endpoint);
-            setProfile((prev: any) => ({
-              ...prev,
+            setProfile((prev: Profile | null) => ({
+              ...prev!,
               [isAvatar ? "avatar_url" : "cover_url"]: null,
             }));
             toast.success(`Đã gỡ ${name}!`, { id: toastId });
-          } catch (err) {
+          } catch (err: unknown) {
             console.error(err);
             toast.error("Không thể gỡ ảnh. Vui lòng thử lại!", { id: toastId });
           } finally {
@@ -392,6 +410,7 @@ export default function ProfilePage() {
                             key={idx}
                             href={link}
                             target="_blank"
+                            rel="noopener noreferrer"
                             title={link}
                             className={`p-3 rounded-full border border-gray-200 hover:shadow-md transition-transform duration-200 hover:scale-110 bg-white ${color}`}
                           >

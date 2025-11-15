@@ -43,8 +43,13 @@ export default function ResetPasswordPage() {
       });
       toast.success(res.data.message);
       router.push("/login");
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Lỗi đặt lại mật khẩu!");
+    } catch (err: unknown) {
+      if (err && typeof err === 'object' && 'response' in err) {
+        const error = err as { response?: { data?: { message?: string } } };
+        toast.error(error.response?.data?.message || "Lỗi đặt lại mật khẩu!");
+      } else {
+        toast.error("Lỗi đặt lại mật khẩu!");
+      }
     } finally {
       setLoading(false);
     }

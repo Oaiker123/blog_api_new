@@ -7,11 +7,50 @@ import { Loader2, ArrowLeft, Trash2, Edit, Eye, X } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 
+// ✅ THÊM INTERFACE
+interface Media {
+  id: number;
+  url: string;
+  type: string;
+  name?: string;
+}
+
+interface Tag {
+  id: number;
+  name: string;
+}
+
+interface Category {
+  id: number;
+  name: string;
+}
+
+interface User {
+  id: number;
+  name: string;
+  email: string;
+  permissions?: string[];
+}
+
+interface Post {
+  id: number;
+  title: string;
+  excerpt: string;
+  content: string;
+  thumbnail: string;
+  status: string;
+  created_at: string;
+  user?: User;
+  category?: Category;
+  tags?: Tag[];
+  media?: Media[];
+}
+
 export default function PostDetailPage() {
   const { id } = useParams();
   const router = useRouter();
-  const [post, setPost] = useState<any>(null);
-  const [user, setUser] = useState<any>(null);
+  const [post, setPost] = useState<Post | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -55,7 +94,7 @@ export default function PostDetailPage() {
 
   // ✅ Xác nhận xóa bằng toast.custom
   const confirmDelete = () => {
-    toast.custom((t: any) => (
+    toast.custom((t) => (
       <div className="bg-white border rounded-lg p-4 shadow-lg space-y-3">
         <p className="font-semibold text-red-600">
           Xóa bài viết này?
@@ -65,14 +104,14 @@ export default function PostDetailPage() {
         </p>
         <div className="flex justify-end gap-2">
           <button
-            onClick={() => toast.dismiss(t.id)}
+            onClick={() => toast.dismiss(t)}
             className="px-3 py-1 text-sm rounded-md border hover:bg-gray-100"
           >
             Hủy
           </button>
           <button
             onClick={() => {
-              toast.dismiss(t.id);
+              toast.dismiss(t);
               handleDelete();
             }}
             className="px-3 py-1 text-sm rounded-md bg-red-600 text-white hover:bg-red-700"
@@ -96,8 +135,8 @@ export default function PostDetailPage() {
   const getGalleryImages = () => {
     if (!post?.media?.length) return [];
     return post.media
-      .filter((m: any) => m.type === "image")
-      .map((m: any, i: number) => ({
+      .filter((m: Media) => m.type === "image")
+      .map((m: Media, i: number) => ({
         url: getImageUrl(m.url),
         name: m.name || `Ảnh ${i + 1}`,
       }));
@@ -236,10 +275,10 @@ export default function PostDetailPage() {
             {post.category?.name || "Chưa có"}
           </span>
         </p>
-        {post.tags?.length > 0 && (
+        {post.tags && post.tags.length > 0 && (
           <p>
             🔖 Tags:{" "}
-            {post.tags.map((t: any) => (
+            {post.tags.map((t: Tag) => (
               <span
                 key={t.id}
                 className="inline-block bg-gray-100 border px-2 py-1 rounded-md mr-1"
@@ -290,6 +329,30 @@ export default function PostDetailPage() {
               className="max-w-full max-h-[80vh] object-contain mx-auto rounded-lg"
               onClick={(e) => e.stopPropagation()}
             />
+
+            {/* Navigation buttons */}
+            {galleryImages.length > 1 && (
+              <>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigateImage("prev");
+                  }}
+                  className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black/50 text-white p-2 rounded-full hover:bg-black/70"
+                >
+                  ‹
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigateImage("next");
+                  }}
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black/50 text-white p-2 rounded-full hover:bg-black/70"
+                >
+                  ›
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}

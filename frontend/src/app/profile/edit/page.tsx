@@ -21,19 +21,38 @@ import { toast } from "sonner";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+// ✅ THÊM INTERFACE
+interface Profile {
+  id: number;
+  username: string;
+  display_name?: string;
+  bio?: string;
+  location?: string;
+  phone?: string;
+  birthdate?: string;
+  gender?: string;
+  website?: string;
+  avatar_url?: string;
+  cover_url?: string;
+  social_links?: string[];
+  newSocialLink?: string;
+}
+
+interface InputProps {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  type?: string;
+}
+
 function Input({
   label,
   value,
   onChange,
   placeholder,
   type = "text",
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-  type?: string;
-}) {
+}: InputProps) {
   return (
     <div className="flex flex-col gap-1">
       <label className="text-sm font-medium text-gray-700">{label}</label>
@@ -52,7 +71,7 @@ export default function EditProfilePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [profile, setProfile] = useState<any>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
 
   const [previewAvatar, setPreviewAvatar] = useState<string | null>(null);
   const [previewCover, setPreviewCover] = useState<string | null>(null);
@@ -73,7 +92,7 @@ export default function EditProfilePage() {
 
         // 🔹 Xử lý social_links: JSON string, array hoặc object đều được
         const raw = data.social_links;
-        let social: any[] = [];
+        let social: string[] = [];
         try {
           social =
             typeof raw === "string"
@@ -124,7 +143,8 @@ export default function EditProfilePage() {
       });
       setProfile(res.data.data);
       toast.success("Cập nhật ảnh thành công!", { id: toastId });
-    } catch {
+    } catch (err: unknown) {
+      console.error("Upload error:", err);
       toast.error("Không thể tải ảnh. Vui lòng thử lại!", { id: toastId });
     } finally {
       setUploading(false);
@@ -152,14 +172,15 @@ export default function EditProfilePage() {
           try {
             const endpoint = isAvatar ? "/avatar" : "/cover";
             await api.delete(endpoint);
-            setProfile((prev: any) => ({
-              ...prev,
+            setProfile((prev: Profile | null) => ({
+              ...prev!,
               [isAvatar ? "avatar_url" : "cover_url"]: null,
             }));
             if (isAvatar) setPreviewAvatar(null);
             else setPreviewCover(null);
             toast.success(`Đã gỡ ${name}!`, { id: toastId });
-          } catch {
+          } catch (err: unknown) {
+            console.error("Remove image error:", err);
             toast.error("Không thể gỡ ảnh. Vui lòng thử lại!", { id: toastId });
           } finally {
             setUploading(false);
@@ -171,6 +192,8 @@ export default function EditProfilePage() {
   };
 
   const handleSave = async () => {
+    if (!profile) return;
+    
     setSaving(true);
     const toastId = toast.loading("Đang lưu thay đổi...");
 
@@ -188,10 +211,35 @@ export default function EditProfilePage() {
       });
       toast.success("Cập nhật hồ sơ thành công!", { id: toastId });
       router.push("/profile");
-    } catch {
+    } catch (err: unknown) {
+      console.error("Save error:", err);
       toast.error("Không thể cập nhật. Vui lòng thử lại!", { id: toastId });
     } finally {
       setSaving(false);
+    }
+  };
+
+  // ✅ SỬA LỖI: Thêm hàm xử lý thêm social link
+  const handleAddSocialLink = () => {
+    if (!profile?.newSocialLink?.trim()) return;
+    
+    const newLinks = [
+      ...(Array.isArray(profile.social_links) ? profile.social_links : []),
+      profile.newSocialLink.trim(),
+    ];
+    
+    setProfile({
+      ...profile,
+      social_links: newLinks,
+      newSocialLink: "",
+    });
+  };
+
+  // ✅ SỬA LỖI: Thêm hàm xử lý key press
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && profile?.newSocialLink?.trim()) {
+      e.preventDefault();
+      handleAddSocialLink();
     }
   };
 
@@ -402,8 +450,8 @@ export default function EditProfilePage() {
               {(Array.isArray(profile.social_links)
                 ? profile.social_links
                 : []
-              ).map((item: any, index: number) => {
-                const link = typeof item === "string" ? item : item.url || "";
+              ).map((item: string, index: number) => {
+                const link = item;
 
                 let Icon = Globe;
                 let color = "text-gray-600";
@@ -441,7 +489,7 @@ export default function EditProfilePage() {
                       type="url"
                       value={link}
                       onChange={(e) => {
-                        const newLinks = [...profile.social_links];
+                        const newLinks = [...profile.social_links!];
                         newLinks[index] = e.target.value;
                         setProfile({ ...profile, social_links: newLinks });
                       }}
@@ -450,7 +498,7 @@ export default function EditProfilePage() {
                     />
                     <button
                       onClick={() => {
-                        const newLinks = [...profile.social_links];
+                        const newLinks = [...profile.social_links!];
                         newLinks.splice(index, 1);
                         setProfile({ ...profile, social_links: newLinks });
                       }}
@@ -473,39 +521,11 @@ export default function EditProfilePage() {
                   onChange={(e) =>
                     setProfile({ ...profile, newSocialLink: e.target.value })
                   }
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && profile.newSocialLink.trim() !== "") {
-                      e.preventDefault();
-                      const newLinks = [
-                        ...(Array.isArray(profile.social_links)
-                          ? profile.social_links
-                          : []),
-                        profile.newSocialLink.trim(),
-                      ];
-                      setProfile({
-                        ...profile,
-                        social_links: newLinks,
-                        newSocialLink: "",
-                      });
-                    }
-                  }}
+                  onKeyDown={handleKeyPress}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-gray-800"
                 />
                 <button
-                  onClick={() => {
-                    if (!profile.newSocialLink.trim()) return;
-                    const newLinks = [
-                      ...(Array.isArray(profile.social_links)
-                        ? profile.social_links
-                        : []),
-                      profile.newSocialLink.trim(),
-                    ];
-                    setProfile({
-                      ...profile,
-                      social_links: newLinks,
-                      newSocialLink: "",
-                    });
-                  }}
+                  onClick={handleAddSocialLink}
                   className="p-2 bg-blue-100 hover:bg-blue-200 rounded-full transition"
                   title="Thêm liên kết"
                 >

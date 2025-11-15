@@ -18,8 +18,13 @@ export default function ForgotPasswordPage() {
       const res = await api.post("/auth/forgot-password", { email });
       toast.success(res.data.message);
       router.push(`/verify-reset-otp?email=${email}`);
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Lỗi gửi OTP!");
+    } catch (err: unknown) {
+      if (err && typeof err === 'object' && 'response' in err) {
+        const error = err as { response?: { data?: { message?: string } } };
+        toast.error(error.response?.data?.message || "Lỗi gửi OTP!");
+      } else {
+        toast.error("Lỗi gửi OTP!");
+      }
     } finally {
       setLoading(false);
     }

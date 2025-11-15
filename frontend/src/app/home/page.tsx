@@ -5,6 +5,7 @@ import { api } from "@/lib/api";
 import Header from "./components/Header";
 import { useRouter } from "next/navigation";
 
+// ✅ THÊM INTERFACE
 interface UserInfo {
   id: number;
   name: string;
@@ -13,24 +14,45 @@ interface UserInfo {
   permissions: string[];
 }
 
+interface Post {
+  id: number;
+  title: string;
+  excerpt: string;
+  thumbnail?: string;
+  content?: string;
+  created_at?: string;
+  user?: {
+    id: number;
+    name: string;
+    email: string;
+  };
+  category?: {
+    id: number;
+    name: string;
+  };
+  tags?: Array<{
+    id: number;
+    name: string;
+  }>;
+}
+
 export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [fadeOut, setFadeOut] = useState(false);
   const [scrollY, setScrollY] = useState(0);
 
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
-
-  const [posts, setPosts] = useState<any[]>([]);
+  const [posts, setPosts] = useState<Post[]>([]);
   const router = useRouter();
 
   useEffect(() => {
     api
       .get("/posts")
-      .then((res) => setPosts(res.data.posts || res.data))
-      .catch((err) => console.error("Không thể tải bài viết:", err));
+      .then((res) => setPosts(res.data.posts || res.data || []))
+      .catch((err: unknown) => console.error("Không thể tải bài viết:", err));
   }, []);
 
-  // ✅ Thêm đoạn này: Cập nhật user mới nhất khi reload trang
+  // ✅ Cập nhật user mới nhất khi reload trang
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) return;
@@ -40,7 +62,7 @@ export default function HomePage() {
       .then((res) => {
         localStorage.setItem("user", JSON.stringify(res.data.user));
       })
-      .catch((err) => {
+      .catch((err: unknown) => {
         console.error("Không thể load user:", err);
       });
   }, []);
@@ -64,7 +86,7 @@ export default function HomePage() {
         });
 
         setUserInfo(res.data.user);
-      } catch (err) {
+      } catch (err: unknown) {
         console.error("Không thể lấy thông tin user:", err);
       }
     };
@@ -81,6 +103,15 @@ export default function HomePage() {
       clearTimeout(doneTimer);
     };
   }, []);
+
+  // ✅ Hàm lấy URL ảnh
+  const getImageUrl = (path?: string) => {
+    if (!path) return "";
+    if (path.startsWith("http")) return path;
+    return `${
+      process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+    }/storage/${path}`;
+  };
 
   if (loading) {
     return (
@@ -101,18 +132,11 @@ export default function HomePage() {
     );
   }
 
-  function getImageUrl(path: string) {
-    if (!path) return "";
-    if (path.startsWith("http")) return path; // nếu đã là URL đầy đủ
-    return `${
-      process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
-    }/storage/${path}`;
-  }
-
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 animate-fadeIn">
       {/* 🔹 Header */}
       <Header />
+      
       {/* 🔹 Hero Section có parallax */}
       <section
         className="relative flex flex-col items-center justify-center text-center min-h-[90vh] overflow-hidden bg-gradient-to-b from-blue-100 via-white to-gray-50"
@@ -143,6 +167,7 @@ export default function HomePage() {
           </button>
         </div>
       </section>
+      
       {/* 🔹 Section tính năng */}
       <section className="py-24 bg-white text-center">
         <h2 className="text-3xl font-semibold mb-10 text-gray-800">
@@ -167,6 +192,7 @@ export default function HomePage() {
           )}
         </div>
       </section>
+      
       {/* 🔹 Section giới thiệu */}
       <section className="py-24 bg-gray-100 text-center">
         <h2 className="text-3xl font-semibold mb-6 text-gray-800">
@@ -195,6 +221,7 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* 🔹 Section bài viết mới nhất */}
       <section className="py-24 bg-white text-center">
         <h2 className="text-3xl font-semibold mb-10 text-gray-800">
           📰 Bài viết mới nhất
@@ -230,33 +257,35 @@ export default function HomePage() {
           </div>
         )}
       </section>
+      
+      {/* 🔹 Hiển thị thông tin user */}
+      {userInfo && (
+        <section className="p-6 m-6 bg-white rounded-2xl shadow-md border border-gray-100">
+          <h2 className="text-2xl font-semibold text-blue-600 mb-4">
+            👤 Thông tin tài khoản
+          </h2>
+          <p className="text-gray-700">
+            <strong>Tên:</strong> {userInfo.name}
+          </p>
+          <p className="text-gray-700">
+            <strong>Email:</strong> {userInfo.email}
+          </p>
+          <p className="text-gray-700">
+            <strong>Role:</strong>{" "}
+            {userInfo.role.length > 0 ? userInfo.role.join(", ") : "Không có"}
+          </p>
+          <p className="text-gray-700">
+            <strong>Quyền:</strong>{" "}
+            {userInfo.permissions.length > 0
+              ? userInfo.permissions.join(", ")
+              : "Không có"}
+          </p>
+        </section>
+      )}
+      
       {/* 🔹 Footer */}
       <footer className="bg-gray-900 text-gray-400 py-6 text-center text-sm">
         © 2025 MyApp. All rights reserved.
-        {/* 🔹 Hiển thị thông tin user */}
-        {userInfo && (
-          <section className="p-6 m-6 bg-white rounded-2xl shadow-md border border-gray-100">
-            <h2 className="text-2xl font-semibold text-blue-600 mb-4">
-              👤 Thông tin tài khoản
-            </h2>
-            <p className="text-gray-700">
-              <strong>Tên:</strong> {userInfo.name}
-            </p>
-            <p className="text-gray-700">
-              <strong>Email:</strong> {userInfo.email}
-            </p>
-            <p className="text-gray-700">
-              <strong>Role:</strong>{" "}
-              {userInfo.role.length > 0 ? userInfo.role.join(", ") : "Không có"}
-            </p>
-            <p className="text-gray-700">
-              <strong>Quyền:</strong>{" "}
-              {userInfo.permissions.length > 0
-                ? userInfo.permissions.join(", ")
-                : "Không có"}
-            </p>
-          </section>
-        )}
       </footer>
     </div>
   );

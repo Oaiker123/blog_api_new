@@ -52,8 +52,13 @@ export default function VerifyResetOtpPage() {
       const res = await api.post("/auth/forgot-password", { email });
       toast.success(res.data.message || "Đã gửi lại mã OTP!");
       setResendCooldown(30);
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Không thể gửi lại OTP.");
+    } catch (err: unknown) {
+      if (err && typeof err === 'object' && 'response' in err) {
+        const error = err as { response?: { data?: { message?: string } } };
+        toast.error(error.response?.data?.message || "Không thể gửi lại OTP.");
+      } else {
+        toast.error("Không thể gửi lại OTP.");
+      }
     } finally {
       setLoading(false);
     }
@@ -70,8 +75,13 @@ export default function VerifyResetOtpPage() {
       const res = await api.post("/auth/verify-reset-otp", { email, otp: otpCode });
       toast.success(res.data.message || "Xác minh thành công!");
       router.push(`/reset-password?email=${email}`);
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "OTP không hợp lệ!");
+    } catch (err: unknown) {
+      if (err && typeof err === 'object' && 'response' in err) {
+        const error = err as { response?: { data?: { message?: string } } };
+        toast.error(error.response?.data?.message || "OTP không hợp lệ!");
+      } else {
+        toast.error("OTP không hợp lệ!");
+      }
     } finally {
       setLoading(false);
     }

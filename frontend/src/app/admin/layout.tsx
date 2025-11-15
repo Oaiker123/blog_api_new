@@ -16,6 +16,23 @@ import {
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
+// ✅ THÊM INTERFACE
+interface Role {
+  id?: number;
+  name: string;
+}
+
+interface Permission {
+  id?: number;
+  name: string;
+}
+
+interface UserData {
+  name?: string;
+  roles?: Role[];
+  permissions?: Permission[];
+}
+
 export default function AdminLayout({
   children,
 }: {
@@ -72,7 +89,6 @@ export default function AdminLayout({
   }, []);
 
   // ✅ Kiểm tra quyền truy cập admin
-  // 🧠 Kiểm tra đăng nhập và quyền truy cập
   useEffect(() => {
     const token = localStorage.getItem("token");
     const userData = localStorage.getItem("user");
@@ -82,12 +98,12 @@ export default function AdminLayout({
       return;
     }
 
-    const user = JSON.parse(userData);
+    const user: UserData = JSON.parse(userData);
     console.log("👤 User data:", user);
 
-    // ✅ Chuẩn hóa roles & permissions
-    const roles = (user.roles || []).map((r: any) => r.name || r);
-    const permissions = (user.permissions || []).map((p: any) => p.name || p);
+    // ✅ Chuẩn hóa roles & permissions (ĐÃ SỬA ANY TYPE)
+    const roles = (user.roles || []).map((r: Role) => r.name || r);
+    const permissions = (user.permissions || []).map((p: Permission) => p.name || p);
 
     // ✅ Chỉ Super Admin hoặc có access-admin mới vào được
     const canAccess =
